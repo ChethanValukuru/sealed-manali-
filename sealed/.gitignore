@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Audit data & crypto keys (Phase 3)
+audit/data/
+audit/keys/
+*.pem
+*.key
+
+# Datasets (fetched on the VM)
+datasets/advbench*.json
+datasets/jailbreakbench*.json
+
+# Env / local
+.env
+*.log

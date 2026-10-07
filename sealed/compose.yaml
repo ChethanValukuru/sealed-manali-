@@ -1,0 +1,162 @@
+# sealed — secure stack (Phase 2 / M2 hardened).
+#
+# Isolation enforced here:
+#   - Network segmentation: each tenant shares a network ONLY with the broker.
+#     red<->broker, blue<->broker, model<->broker, audit<->broker. No tenant has
+#     a route or DNS to another tenant; audit is reachable only by the broker.
+#   - seccomp: red/blue/model load isolation/seccomp/tenant.json.
+#   - Privileges: cap_drop ALL + no-new-privileges everywhere; tenants + broker
+#     run non-root (uid 10001, set in their Dockerfiles).
+#   - Filesystem: read-only rootfs + /tmp tmpfs for tenants + broker.
+#   - Resources (cgroups v2): per-service cpus / mem_limit / pids_limit.
+#
+# The deliberately-insecure comparison is compose.naive.yaml (Phase 3 / M6).
+# Works with `docker compose` or `podman compose` / `podman-compose`.
+
+x-hardening: &hardening
+  cap_drop: ["ALL"]
+  security_opt:
+    - "no-new-privileges:true"
+  read_only: true
+  tmpfs:
+    - /tmp
+  restart: unless-stopped
+
+services:
+  audit:
+    build: ./audit
+    environment:
+      - AUDIT_DATA_DIR=/data
+    volumes:
+      - audit-data:/data
+    ports:
+      - "8001:8001"
+    cap_drop: ["ALL"]
+    security_opt:
+      - "no-new-privileges:true"
+    read_only: true          # rootfs read-only; /data volume stays writable
+    tmpfs:
+      - /tmp
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 128
+    restart: unless-stopped
+    networks:
+      - audit-net
+
+  model:
+    build: ./tenants/model
+    <<: *hardening
+    security_opt:
+      - "no-new-privileges:true"
+      - "seccomp=./isolation/seccomp/tenant.json"
+    environment:
+      - MOCK_MODEL=${MOCK_MODEL:-1}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.containers.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:1b}
+    mem_limit: 2g
+    cpus: 2.0
+    pids_limit: 256
+    networks:
+      - model-net
+
+  blue:
+    build: ./tenants/blue
+    <<: *hardening
+    security_opt:
+      - "no-new-privileges:true"
+      - "seccomp=./isolation/seccomp/tenant.json"
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 128
+    networks:
+      - blue-net
+
+  # One-way observability: receives boundary-violation alerts from the broker and
+  # writes them to audit. On audit-net only, so tenants cannot reach it.
+  monitor:
+    build: ./monitor
+    <<: *hardening
+    environment:
+      - AUDIT_URL=http://audit:8001
+    mem_limit: 128m
+    cpus: 0.25
+    pids_limit: 64
+    depends_on:
+      audit:
+        condition: service_healthy
+    networks:
+      - audit-net
+
+  broker:
+    build: ./broker
+    <<: *hardening
+    environment:
+      - MODEL_URL=http://model:8002
+      - BLUE_URL=http://blue:8003
+      - AUDIT_URL=http://audit:8001
+      - MONITOR_URL=http://monitor:8005
+      - TIMING_QUANTUM_MS=${TIMING_QUANTUM_MS:-0}
+      - CAP_ENFORCE=1
+      # Broker holds every tenant's token to build its capability table.
+      - RED_TOKEN=${RED_TOKEN:-red-cap-token-dev}
+      - BLUE_TOKEN=${BLUE_TOKEN:-blue-cap-token-dev}
+      - MODEL_TOKEN=${MODEL_TOKEN:-model-cap-token-dev}
+    ports:
+      - "8000:8000"
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 256
+    depends_on:
+      audit:
+        condition: service_healthy
+      model:
+        condition: service_healthy
+      blue:
+        condition: service_healthy
+      monitor:
+        condition: service_healthy
+    # The broker is the ONLY service on every tenant network — the sole mediator.
+    networks:
+      - red-net
+      - blue-net
+      - model-net
+      - audit-net
+
+  red:
+    build: ./tenants/red
+    <<: *hardening
+    security_opt:
+      - "no-new-privileges:true"
+      - "seccomp=./isolation/seccomp/tenant.json"
+    environment:
+      - BROKER_URL=http://broker:8000
+      - ATTACKS_PATH=/data/sample_attacks.json
+      - CAP_TOKEN=${RED_TOKEN:-red-cap-token-dev}   # red holds ONLY its own token
+    volumes:
+      - ./datasets:/data:ro
+    ports:
+      - "8004:8004"
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 128
+    depends_on:
+      broker:
+        condition: service_healthy
+    networks:
+      - red-net
+
+# Per-tenant networks. A tenant and the broker are the only members of each;
+# tenants therefore cannot reach one another, and only the broker reaches audit.
+networks:
+  red-net:
+    driver: bridge
+  blue-net:
+    driver: bridge
+  model-net:
+    driver: bridge
+  audit-net:
+    driver: bridge
+
+volumes:
+  audit-data:

@@ -1,0 +1,43 @@
+{
+  "_comment": "Per-tenant seccomp profile for red/blue/model (Phase 2 / M2). For the PoC the default action is ALLOW and we ERRNO-block a set of escalation/breakout-adjacent syscalls PLUS a canary (chmod) that the isolation test checks to prove the profile is actually applied. A production hardening would invert this to defaultAction=SCMP_ACT_ERRNO with an explicit allowlist; documented in THREAT_MODEL.md (Phase 4).",
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "architectures": [
+    "SCMP_ARCH_X86_64",
+    "SCMP_ARCH_X86",
+    "SCMP_ARCH_X32",
+    "SCMP_ARCH_AARCH64",
+    "SCMP_ARCH_ARM"
+  ],
+  "syscalls": [
+    {
+      "names": [
+        "mount",
+        "umount2",
+        "ptrace",
+        "kexec_load",
+        "kexec_file_load",
+        "init_module",
+        "finit_module",
+        "delete_module",
+        "reboot",
+        "swapon",
+        "swapoff",
+        "unshare",
+        "setns",
+        "pivot_root",
+        "chroot",
+        "keyctl",
+        "add_key",
+        "request_key",
+        "bpf",
+        "clock_settime",
+        "settimeofday",
+        "chmod",
+        "fchmod",
+        "fchmodat"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "errnoRet": 1
+    }
+  ]
+}

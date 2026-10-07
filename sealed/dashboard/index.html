@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sealed — console</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --line:#2a313c; --fg:#e6edf3; --muted:#9aa7b4;
+    --green:#2ea043; --amber:#d29922; --red:#f85149; --accent:#388bfd;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+  header h1{font-size:16px;margin:0;letter-spacing:.3px}
+  header .sub{color:var(--muted);font-size:12px}
+  main{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 20px;max-width:1100px}
+  @media(max-width:760px){main{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .panel h2{font-size:13px;margin:0 0 10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  .row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--line)}
+  .row:last-child{border-bottom:0}
+  .badge{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600}
+  .ok{background:rgba(46,160,67,.15);color:var(--green)}
+  .warn{background:rgba(210,153,34,.15);color:var(--amber)}
+  .bad{background:rgba(248,81,73,.15);color:var(--red)}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:8px 12px;font-weight:600;cursor:pointer;margin:0 6px 6px 0}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
+  pre{background:#0b0e13;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;max-height:240px;font-size:12px;color:#c9d4df}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600}
+  .cfg{margin-left:auto;font-size:12px;color:var(--muted)}
+  input{background:#0b0e13;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:4px 6px;width:150px}
+  .leak{color:var(--red);font-weight:700}
+  .held{color:var(--green);font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <h1>🔒 sealed</h1>
+  <span class="sub">secure adversarial AI testing — console</span>
+  <span class="cfg">broker <input id="broker" value="http://localhost:8000">
+    audit <input id="audit" value="http://localhost:8001">
+    red <input id="red" value="http://localhost:8004"></span>
+</header>
+<main>
+  <section class="panel">
+    <h2>Isolation Health</h2>
+    <div id="health"><div class="row"><span>loading…</span></div></div>
+  </section>
+
+  <section class="panel">
+    <h2>Controls</h2>
+    <button onclick="runEval()">Run eval</button>
+    <button onclick="runContam()">Run contamination probe</button>
+    <button class="ghost" onclick="verify()">Verify audit integrity</button>
+    <pre id="result">Ready. Secure stack must be up (make up).</pre>
+  </section>
+
+  <section class="panel" style="grid-column:1/-1">
+    <h2>Audit Log <span id="chip"></span></h2>
+    <table><thead><tr><th>seq</th><th>actor</th><th>event</th><th>test_id</th></tr></thead>
+    <tbody id="log"></tbody></table>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const base = k => $(k).value.replace(/\/$/,'');
+const show = (o) => $('result').textContent = (typeof o==='string')?o:JSON.stringify(o,null,2);
+
+function badge(v){
+  const good=['enforced','on','one_way','dropped_all','read_only'];
+  const warn=['off','disabled','stateless_calls'];
+  const cls = good.includes(String(v))?'ok':(warn.includes(String(v))?'warn':'ok');
+  return `<span class="badge ${cls}">${v}</span>`;
+}
+
+async function health(){
+  try{
+    const r = await fetch(base('broker')+'/health/isolation'); const d = await r.json();
+    $('health').innerHTML = Object.entries(d).filter(([k])=>k!=='proven_by')
+      .map(([k,v])=>`<div class="row"><span>${k}</span>${badge(v)}</div>`).join('');
+  }catch(e){ $('health').innerHTML = `<div class="row"><span>broker unreachable</span><span class="badge bad">down</span></div>`; }
+}
+
+async function log(){
+  try{
+    const r = await fetch(base('audit')+'/log?limit=25'); const d = await r.json();
+    $('chip').innerHTML = `<span class="badge ok">${d.count} entries</span>`;
+    $('log').innerHTML = d.entries.slice().reverse().map(e=>
+      `<tr><td>${e.seq}</td><td>${e.actor}</td><td>${e.event}</td><td>${e.test_id||''}</td></tr>`).join('');
+  }catch(e){ $('chip').innerHTML = `<span class="badge bad">audit down</span>`; }
+}
+
+async function runEval(){
+  show('running eval…');
+  try{ const r = await fetch(base('red')+'/run',{method:'POST'}); show(await r.json()); }
+  catch(e){ show('error: '+e); } log();
+}
+async function runContam(){
+  show('running plant → probe…');
+  try{
+    const r = await fetch(base('red')+'/run_contamination',{method:'POST'}); const d = await r.json();
+    d._verdict = d.leaked ? 'LEAKED — contamination!' : 'clean — fresh context held';
+    show(d);
+  }catch(e){ show('error: '+e); } log();
+}
+async function verify(){
+  show('verifying hash chain…');
+  try{
+    const r = await fetch(base('audit')+'/verify',{method:'POST'}); const d = await r.json();
+    d._verdict = d.intact ? 'INTACT — chain + signatures verified' : `TAMPER at seq ${d.broken_seq}: ${d.reason}`;
+    show(d);
+  }catch(e){ show('error: '+e); }
+}
+
+health(); log();
+setInterval(()=>{health();log();}, 3000);
+</script>
+</body>
+</html>

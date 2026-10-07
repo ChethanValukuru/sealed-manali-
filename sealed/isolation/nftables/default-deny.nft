@@ -1,0 +1,45 @@
+#!/usr/sbin/nft -f
+#
+# sealed — host-level nftables default-deny (Phase 2 / M2), defense-in-depth.
+#
+# PRIMARY enforcement of "no tenant-to-tenant path" is the compose topology:
+# each tenant shares a network ONLY with the broker (see compose.yaml). A tenant
+# therefore has no route or DNS to any other tenant. tests/test_isolation.py
+# proves this directly.
+#
+# This ruleset is the SECOND layer: a host firewall that drops inter-container
+# forwarding by default and only permits each tenant subnet to talk to the
+# broker. Apply with isolation/nftables/apply.sh AFTER `make up`, once you have
+# filled in the per-network subnets printed by that script.
+#
+# NOTE: Docker/Podman manage their own iptables/nftables chains. On Docker, set
+# the daemon to the nftables backend or run this in a dedicated table and accept
+# that Docker's own rules coexist. On rootless Podman (netavark) this slots in
+# more cleanly. Treated as documented defense-in-depth, not the sole guarantee.
+
+table inet sealed {
+    # Fill these from apply.sh output (the subnets compose assigned):
+    #   define RED_NET    = 10.89.0.0/24
+    #   define BLUE_NET   = 10.89.1.0/24
+    #   define MODEL_NET  = 10.89.2.0/24
+    #   define BROKER_IPS = { <broker ip on each tenant net> }
+
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+
+        # Allow already-established/related flows.
+        ct state established,related accept
+
+        # Allow each tenant subnet <-> broker only. (Uncomment after defining.)
+        # ip saddr $RED_NET   ip daddr $BROKER_IPS accept
+        # ip daddr $RED_NET   ip saddr $BROKER_IPS accept
+        # ip saddr $BLUE_NET  ip daddr $BROKER_IPS accept
+        # ip daddr $BLUE_NET  ip saddr $BROKER_IPS accept
+        # ip saddr $MODEL_NET ip daddr $BROKER_IPS accept
+        # ip daddr $MODEL_NET ip saddr $BROKER_IPS accept
+
+        # Everything else between containers is dropped by the policy above.
+        # Explicit log for the Phase 4 monitor to observe:
+        log prefix "sealed-drop: " level info
+    }
+}
