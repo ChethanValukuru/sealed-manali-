@@ -1,0 +1,94 @@
+# sealed — NAIVE shared sandbox (Phase 3 / M6). DELIBERATELY INSECURE.
+#
+# This is the "before" in the before/after demo. Every isolation control from
+# compose.yaml is intentionally removed so the leaks are visible:
+#   - ONE shared network: every tenant can reach every other tenant directly.
+#   - A SHARED VOLUME (/shared): red drops its raw payload where blue reads it
+#     mid-test (disclosure leak).
+#   - Model CONTEXT_MODE=persistent: context is reused across tests, so a later
+#     test recovers an earlier test's planted secret (contamination).
+#   - No seccomp, no cap_drop, no read-only rootfs, no cgroup limits, root user.
+#
+# Distinct project name + 180xx host ports so it can run alongside the secure
+# stack (compose.yaml) for a side-by-side demo. DO NOT deploy this.
+
+name: sealed-naive
+
+services:
+  audit:
+    build: ./audit
+    environment:
+      - AUDIT_DATA_DIR=/data
+    volumes:
+      - naive-audit-data:/data
+    ports:
+      - "18001:8001"
+    networks:
+      - naive-net
+
+  model:
+    build: ./tenants/model
+    environment:
+      - MOCK_MODEL=1
+      - CONTEXT_MODE=persistent      # <-- the contamination flaw
+    ports:
+      - "18002:8002"
+    networks:
+      - naive-net
+
+  blue:
+    build: ./tenants/blue
+    environment:
+      - SHARED_DIR=/shared           # <-- blue can read the shared store
+    volumes:
+      - naive-shared:/shared
+    ports:
+      - "18003:8003"
+    networks:
+      - naive-net
+
+  broker:
+    build: ./broker
+    environment:
+      - MODEL_URL=http://model:8002
+      - BLUE_URL=http://blue:8003
+      - AUDIT_URL=http://audit:8001
+      - TIMING_QUANTUM_MS=0
+      - CAP_ENFORCE=0          # naive: no access control (another removed control)
+    ports:
+      - "18000:8000"
+    depends_on:
+      audit:
+        condition: service_healthy
+      model:
+        condition: service_healthy
+      blue:
+        condition: service_healthy
+    networks:
+      - naive-net
+
+  red:
+    build: ./tenants/red
+    environment:
+      - BROKER_URL=http://broker:8000
+      - ATTACKS_PATH=/data/sample_attacks.json
+      - SHARED_DIR=/shared           # <-- red drops its raw payload here
+    volumes:
+      - ./datasets:/data:ro
+      - naive-shared:/shared
+    ports:
+      - "18004:8004"
+    depends_on:
+      broker:
+        condition: service_healthy
+    networks:
+      - naive-net
+
+# One flat network — no segmentation. Everyone can reach everyone.
+networks:
+  naive-net:
+    driver: bridge
+
+volumes:
+  naive-audit-data:
+  naive-shared:        # the shared sandbox disk that leaks red -> blue
