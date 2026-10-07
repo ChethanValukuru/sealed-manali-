@@ -1,1 +1,4 @@
 pytest==8.3.4
+# Surfaces each failing assertion as a GitHub Actions annotation (file:line:msg),
+# so CI failures are readable via the API without signing in to view raw logs.
+pytest-github-actions-annotate-failures>=0.2
