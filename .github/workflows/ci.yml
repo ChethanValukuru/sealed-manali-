@@ -1,0 +1,57 @@
+name: CI
+
+# Runs the full sealed test suite on real Linux (Ubuntu runners have Docker +
+# the compose plugin preinstalled). This executes the container-isolation proofs
+# (M2) and deployability (Obj04) that can't run on a non-Linux dev box, plus the
+# container-free logic harness.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: sealed
+
+jobs:
+  harness:
+    name: Container-free harness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install harness deps
+        run: pip install -r tools/requirements.txt
+      - name: Run local_e2e (eval loop, contamination, tokens, gating, monitor, audit)
+        run: python tools/local_e2e.py
+
+  integration:
+    name: Containerized objective proofs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test deps (host pytest)
+        run: pip install -r tests/requirements.txt
+      - name: Build + start the secure stack (wait for healthy)
+        run: |
+          cp .env.example .env
+          docker compose up -d --build --wait
+          docker compose ps
+      - name: Objective proofs — isolation, audit, contamination, access, latency
+        run: make test
+      - name: Audit integrity — verify clean + detect tamper
+        run: |
+          make verify-audit
+          make demo-tamper
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --no-color | tail -n 400
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
