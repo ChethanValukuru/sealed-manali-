@@ -50,6 +50,19 @@ complete, clean deploy on a fresh VM via `make up`. (Runtime run pending on a Li
 - **Honesty + perf (Phase 4 / M7):** `THREAT_MODEL.md` (Obj 06); `tests/test_latency.py` +
   `make latency` report isolation overhead (Obj 01). Minimal `dashboard/index.html` (`make dashboard`).
 
+## Verification status (2026-10-07)
+
+- **Logic proven by real execution** via `tools/local_e2e.py` (runs all services as
+  local processes, no Docker): **13/13 checks pass** — M1 eval loop, M3 audit
+  verify+tamper (broke at exact seq), M4 fresh-context (secure clean / naive leaks
+  `ZEBRA-4417`), M5 tokens+gating+monitor, Obj01 latency.
+- **Efficiency fix applied:** broker + `audit_client` now reuse a pooled `httpx.Client`
+  instead of one-per-call. Mediated eval overhead dropped ~6108 ms → ~32 ms/eval.
+- **pytest suite**: 18 tests collect cleanly; they SKIP without a container engine and
+  will run on the Linux VM via `make test`.
+- **Not yet run anywhere:** M2 isolation (network/seccomp/rootfs/caps/namespaces) and
+  Obj04 deployability — these require a Linux Docker/Podman host; statically verified.
+
 ## Known soft spots (honest, not failures)
 
 - nftables ruleset needs subnets filled in (`isolation/nftables/apply.sh`); the compose network

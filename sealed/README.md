@@ -93,6 +93,22 @@ make demo-tamper        # edit a copy of the log -> verifier flags the exact ent
 Linux Docker/Podman host (the VM) with the stack up. Override the engine with
 `make test COMPOSE="podman compose"`.
 
+### Container-free smoke test (no Docker needed)
+
+For quick logic validation on any machine with Python (e.g. Windows dev):
+
+```bash
+pip install fastapi "uvicorn[standard]" httpx cryptography
+python tools/local_e2e.py
+```
+
+This launches every service as a local process over 127.0.0.1 and checks the
+real eval loop, fresh-context vs naive contamination, capability tokens, disclosure
+gating, the one-way monitor, and the tamper-evident audit chain — **13/13 passing**,
+with a measured mediated-eval overhead of ~30 ms. It does **not** cover the
+container-isolation asserts (network/seccomp/rootfs/caps/namespaces) or
+deployability — those need the Linux container run via `make test`.
+
 ## The before/after demo (Phase 3 / M6)
 
 ```bash
