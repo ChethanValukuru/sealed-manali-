@@ -1,0 +1,12 @@
+# Normalize all text to LF in the repo and on checkout. The stack deploys to a
+# Linux VM; shell scripts, the Makefile, and the nftables ruleset must stay LF.
+* text=auto eol=lf
+
+# Explicitly LF for the files that break under CRLF on Linux.
+*.sh    text eol=lf
+*.nft   text eol=lf
+Makefile text eol=lf
+*.py    text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.json  text eol=lf
