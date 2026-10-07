@@ -38,6 +38,11 @@ app = FastAPI(title="sealed-broker", version="0.4.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
                    allow_headers=["*"])
 
+# A single pooled HTTP client, reused across requests (keep-alive connections to
+# model/blue/monitor). Creating a client per request adds a TCP handshake + setup
+# cost to every eval; httpx.Client is thread-safe for the sync pool.
+_http = httpx.Client(timeout=120.0)
+
 _tests: dict[str, dict] = {}
 
 
@@ -54,9 +59,9 @@ class ConcludeReq(BaseModel):
 def _alert_monitor(kind: str, detail: dict) -> None:
     """Best-effort, one-way notification to the monitor."""
     try:
-        with httpx.Client(timeout=5.0) as client:
-            client.post(f"{MONITOR_URL}/alert",
-                        json={"source": "broker", "kind": kind, "detail": detail})
+        _http.post(f"{MONITOR_URL}/alert",
+                   json={"source": "broker", "kind": kind, "detail": detail},
+                   timeout=5.0)
     except Exception:  # noqa: BLE001
         pass
 
@@ -110,23 +115,22 @@ def attack(req: AttackReq,
                  "prompt_hash": audit_client.payload_hash({"p": req.prompt})},
     )
 
-    with httpx.Client(timeout=120.0) as client:
-        model_resp = client.post(
-            f"{MODEL_URL}/generate",
-            json={"test_id": req.test_id, "prompt": req.prompt},
-        ).json()
-        model_output = model_resp.get("response", "")
-        audit_client.record(
-            "model", "model_response", test_id=req.test_id,
-            payload={"attack_id": req.attack_id, "backend": model_resp.get("backend"),
-                     "response_hash": audit_client.payload_hash({"r": model_output})},
-        )
+    model_resp = _http.post(
+        f"{MODEL_URL}/generate",
+        json={"test_id": req.test_id, "prompt": req.prompt},
+    ).json()
+    model_output = model_resp.get("response", "")
+    audit_client.record(
+        "model", "model_response", test_id=req.test_id,
+        payload={"attack_id": req.attack_id, "backend": model_resp.get("backend"),
+                 "response_hash": audit_client.payload_hash({"r": model_output})},
+    )
 
-        gated = policy.gate_for_blue(req.prompt, model_output)  # model output only
-        verdict_resp = client.post(
-            f"{BLUE_URL}/classify",
-            json={"test_id": req.test_id, "model_output": gated["model_output"]},
-        ).json()
+    gated = policy.gate_for_blue(req.prompt, model_output)  # model output only
+    verdict_resp = _http.post(
+        f"{BLUE_URL}/classify",
+        json={"test_id": req.test_id, "model_output": gated["model_output"]},
+    ).json()
 
     verdict = verdict_resp.get("verdict", "unknown")
     flagged = bool(verdict_resp.get("flagged"))

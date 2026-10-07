@@ -9,6 +9,10 @@ import httpx
 
 AUDIT_URL = os.environ.get("AUDIT_URL", "http://audit:8001")
 
+# Reused pooled client (keep-alive to the audit service) — avoids a per-event
+# client construction + TCP handshake on the hot path.
+_client = httpx.Client(timeout=10.0)
+
 
 def payload_hash(payload: dict) -> str:
     """Stable SHA-256 of a payload. In Phase 1 we store the hash alongside events
@@ -24,8 +28,7 @@ def record(actor: str, event: str, test_id: str | None = None,
     body = {"actor": actor, "event": event, "test_id": test_id,
             "payload": payload or {}}
     try:
-        with httpx.Client(timeout=10.0) as client:
-            client.post(f"{AUDIT_URL}/append", json=body)
+        _client.post(f"{AUDIT_URL}/append", json=body)
     except Exception:  # noqa: BLE001 - audit is append-only; log-and-continue
         # Phase 4's monitor will surface audit outages; for M1 we stay resilient.
         pass
