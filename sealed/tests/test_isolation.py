@@ -105,15 +105,18 @@ def test_all_capabilities_dropped():
 
 @requires_stack
 def test_cannot_see_other_tenant_processes():
+    # The needles are built from fragments so this script's OWN /proc cmdline
+    # (which contains the needle variables) cannot match itself.
     script = (
         "import os\n"
+        "nb='filter'+':app'; nm='wrapper'+':app'\n"
         "names=[]\n"
         "for pid in os.listdir('/proc'):\n"
         "    if pid.isdigit():\n"
         "        try: names.append(open(f'/proc/{pid}/cmdline','rb').read().decode('latin1'))\n"
         "        except Exception: pass\n"
         "joined=' '.join(names)\n"
-        "print('filter:app' in joined, 'wrapper:app' in joined)\n"
+        "print(nb in joined, nm in joined)\n"
     )
     r = compose_exec("red", script)
     assert r.returncode == 0
