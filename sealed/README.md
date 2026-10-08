@@ -1,5 +1,7 @@
 # sealed — Secure Adversarial AI Testing Infrastructure
 
+[![CI](https://github.com/ChethanValukuru/sealed-manali-/actions/workflows/ci.yml/badge.svg)](https://github.com/ChethanValukuru/sealed-manali-/actions/workflows/ci.yml)
+
 Runs a **red team**, a **blue team**, and the **model under test** on one standard
 Linux VM while keeping all three sealed off from each other, with a tamper-evident
 audit log. See `../COMPLETE_SOLUTION.md` for the full concept and
