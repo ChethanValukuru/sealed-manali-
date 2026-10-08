@@ -1,0 +1,61 @@
+# Opt-in override: run the model under test on a REAL Ollama model instead of the
+# deterministic mock. The default stack (compose.yaml) stays on MOCK_MODEL=1 so CI
+# is fast and reproducible; layer this file on top to use real inference:
+#
+#   docker compose -f compose.yaml -f compose.ollama.yaml up -d --build --wait
+#   (or:  make up-ollama)
+#
+# Pulls OLLAMA_MODEL (default llama3.2:1b, ~1.3GB, CPU-friendly) once into a named
+# volume. The Ollama backend sits on its own network reachable ONLY by the model
+# wrapper — tenants and the broker cannot see it.
+
+services:
+  # Inference backend. Binds 0.0.0.0 so the model wrapper container can reach it.
+  ollama:
+    image: ollama/ollama:latest
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    volumes:
+      - ollama-models:/root/.ollama
+    networks:
+      - ollama-net
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
+    restart: unless-stopped
+
+  # One-shot: pull the model, then exit. The model wrapper waits for this to finish.
+  ollama-pull:
+    image: ollama/ollama:latest
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${OLLAMA_MODEL:-llama3.2:1b}"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - ollama-net
+    restart: "no"
+
+  # Point the model wrapper at the real backend.
+  model:
+    environment:
+      - MOCK_MODEL=0
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:1b}
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+    networks:
+      - model-net
+      - ollama-net
+
+networks:
+  ollama-net:
+    driver: bridge
+
+volumes:
+  ollama-models:

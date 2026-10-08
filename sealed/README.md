@@ -59,16 +59,20 @@ make up COMPOSE="podman compose"      # or COMPOSE="podman-compose"
 
 ## Using a real model (Ollama)
 
+Real inference is an opt-in overlay — [`compose.ollama.yaml`](compose.ollama.yaml)
+adds a self-contained **Ollama** service, pulls the model once, and points the
+model wrapper at it. No host Ollama needed; the backend sits on its own network
+reachable only by the model wrapper.
+
 ```bash
-curl -fsSL https://ollama.com/install.sh | sh
-ollama pull llama3.2:1b
-# point the stack at the host's Ollama and turn off mock mode:
-#   in .env:  MOCK_MODEL=0
-#   OLLAMA_HOST should resolve from containers (host.containers.internal on
-#   Podman; on Docker use the host gateway, e.g. http://172.17.0.1:11434)
-make up
-make demo-secure
+make up-ollama                  # same stack, real model (pulls llama3.2:1b, ~1.3GB)
+make demo-secure                # now runs against the real model
+make down-ollama                # tear down (removes the stack + model volume)
 ```
+
+Pick a different model with `OLLAMA_MODEL` (e.g. `OLLAMA_MODEL=qwen2.5:0.5b make up-ollama`
+for a smaller/faster pull, or `mistral`). The default stack (`make up`) stays on the
+deterministic mock so tests and CI are fast; `make up-ollama` is for real runs.
 
 ## Real attack datasets
 
