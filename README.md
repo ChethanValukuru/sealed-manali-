@@ -18,8 +18,6 @@ model**. Built for Hack in Hills '26 · Track 04 (Bayora).
 |---|---|
 | [`sealed/`](sealed/) | the implementation — start at [`sealed/README.md`](sealed/README.md) |
 | [`sealed/THREAT_MODEL.md`](sealed/THREAT_MODEL.md) | what it protects against, and where it doesn't (Obj 06) |
-| [`Build_Spec_for_Claude_Code.md`](Build_Spec_for_Claude_Code.md) | the milestone build spec |
-| [`COMPLETE_SOLUTION.md`](COMPLETE_SOLUTION.md) | full concept, architecture, pitch, business case |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | runs the whole suite on Ubuntu runners |
 
 ## Quick start

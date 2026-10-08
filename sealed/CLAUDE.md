@@ -1,9 +1,8 @@
 # CLAUDE.md — project pointer & progress
 
 **Project:** `sealed` — Secure Adversarial AI Testing Infrastructure
-**Spec:** see `../Build_Spec_for_Claude_Code.md` and `../COMPLETE_SOLUTION.md` (one level up).
 
-Build **phase by phase, in order**. Each phase has a hard exit criterion — do not advance until it passes.
+Built **phase by phase, in order**. Each phase has a hard exit criterion — do not advance until it passes.
 
 ## Phase map (milestones grouped)
 
