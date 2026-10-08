@@ -5,13 +5,16 @@
 # (or COMPOSE="podman-compose" depending on your Podman version).
 COMPOSE ?= docker compose
 NAIVE   ?= $(COMPOSE) -f compose.naive.yaml
+OLLAMA  ?= $(COMPOSE) -f compose.yaml -f compose.ollama.yaml
 
 .PHONY: help up down ps logs build demo-secure demo-naive naive-up naive-down \
-        test latency verify-audit demo-tamper dashboard fetch-datasets
+        up-ollama down-ollama test latency verify-audit demo-tamper dashboard \
+        fetch-datasets
 
 help:
 	@echo "sealed targets:"
-	@echo "  make up            - build + start the 5-service secure stack"
+	@echo "  make up            - build + start the secure stack (mock model)"
+	@echo "  make up-ollama     - same stack but with a REAL Ollama model"
 	@echo "  make down          - stop and remove the stack"
 	@echo "  make ps            - show container status/health"
 	@echo "  make logs          - tail logs"
@@ -34,6 +37,14 @@ up:
 
 down:
 	$(COMPOSE) down -v
+
+# Real Ollama model instead of the mock (pulls OLLAMA_MODEL on first run).
+up-ollama:
+	$(OLLAMA) up -d --build --wait
+	@$(OLLAMA) ps
+
+down-ollama:
+	$(OLLAMA) down -v
 
 ps:
 	$(COMPOSE) ps
