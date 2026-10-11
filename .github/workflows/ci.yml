@@ -55,3 +55,40 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose down -v
+
+  ollama-real:
+    name: Real Ollama generation (optional)
+    runs-on: ubuntu-latest
+    # Optional: a registry/inference hiccup reports here but does not block CI.
+    continue-on-error: true
+    env:
+      OLLAMA_MODEL: qwen2.5:0.5b   # tiny (~400MB), CPU-friendly
+      OLLAMA: docker compose -f compose.yaml -f compose.ollama.yaml
+    steps:
+      - uses: actions/checkout@v5
+      - name: Start stack with a REAL Ollama model (pulls qwen2.5:0.5b)
+        run: |
+          cp .env.example .env
+          $OLLAMA up -d --build --wait
+          $OLLAMA ps
+      - name: Confirm the model backend is Ollama (not mock)
+        run: |
+          B=$($OLLAMA exec -T model python -c "import urllib.request,json;print(json.load(urllib.request.urlopen('http://localhost:8002/health'))['backend'])")
+          echo "model backend: $B"
+          test "$B" = "ollama"
+      - name: One real generation through the broker
+        run: |
+          T=red-cap-token-dev
+          TID=$(curl -s -X POST -H "X-Cap-Token: $T" http://localhost:8000/test/start | python3 -c "import sys,json;print(json.load(sys.stdin)['test_id'])")
+          RESP=$(curl -s -X POST -H "X-Cap-Token: $T" -H "Content-Type: application/json" \
+            -d "{\"test_id\":\"$TID\",\"attack_id\":\"a1\",\"prompt\":\"In one sentence, what is a firewall?\"}" \
+            http://localhost:8000/attack)
+          echo "attack response: $RESP"
+          echo "$RESP" | python3 -c "import sys,json; r=json.load(sys.stdin); resp=r['model_response'].strip(); assert len(resp)>0, 'empty response'; assert 'general-purpose answer to your request' not in resp, 'got MOCK, not a real generation'; print('REAL GENERATION OK ->', resp[:160])"
+          curl -s -X POST -H "X-Cap-Token: $T" -H "Content-Type: application/json" -d "{\"test_id\":\"$TID\"}" http://localhost:8000/test/conclude >/dev/null || true
+      - name: Dump logs on failure
+        if: failure()
+        run: $OLLAMA logs --no-color | tail -n 400
+      - name: Tear down
+        if: always()
+        run: $OLLAMA down -v
