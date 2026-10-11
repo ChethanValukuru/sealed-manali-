@@ -74,6 +74,10 @@ Pick a different model with `OLLAMA_MODEL` (e.g. `OLLAMA_MODEL=qwen2.5:0.5b make
 for a smaller/faster pull, or `mistral`). The default stack (`make up`) stays on the
 deterministic mock so tests and CI are fast; `make up-ollama` is for real runs.
 
+CI also runs an **optional** `ollama-real` job that brings up this overlay with a tiny
+model (`qwen2.5:0.5b`) and asserts one genuine generation through the broker — so the
+real-model path is proven on every push (non-blocking, so a registry hiccup never reds CI).
+
 ## Real attack datasets
 
 ```bash
