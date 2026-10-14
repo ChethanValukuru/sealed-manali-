@@ -17,6 +17,7 @@ model**. Built for Hack in Hills '26 · Track 04 (Bayora).
 | Path | What |
 |---|---|
 | [`sealed/`](sealed/) | the implementation — start at [`sealed/README.md`](sealed/README.md) |
+| [`web/`](web/) | the frontend — a clean explainer + a live console (deploys on Vercel) |
 | [`sealed/THREAT_MODEL.md`](sealed/THREAT_MODEL.md) | what it protects against, and where it doesn't (Obj 06) |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | runs the whole suite on Ubuntu runners |
 
@@ -37,6 +38,14 @@ No Docker? Run the container-free logic harness on any machine with Python:
 pip install -r sealed/tools/requirements.txt
 python sealed/tools/local_e2e.py        # 13/13 checks
 ```
+
+## Frontend ([`web/`](web/))
+
+A zero-build static site: an explainer plus a live **console** that connects to your
+own running backend and shows **only real data** (no fabricated numbers). Deploy on
+Vercel with **Root Directory = `web`**, Framework Preset = **Other**. Run locally with
+`cd web && python -m http.server 8080`. See [`web/README.md`](web/README.md) — note the
+HTTPS→HTTP mixed-content caveat for connecting a public page to a remote backend.
 
 ## Six objectives → where proven
 
