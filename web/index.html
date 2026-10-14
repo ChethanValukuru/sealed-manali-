@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sealed — trustworthy infrastructure for adversarial AI testing</title>
+<meta name="description" content="Run the red team, the blue team, and the model under test together — sealed off from each other, with a tamper-evident audit log and an honest threat model.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>
+  // apply saved theme before paint
+  try { var t = localStorage.getItem('sealed-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="7" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="9" y="9" width="14" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="14" y="14" width="4" height="4" rx="1.2" fill="currentColor"/></svg>
+      sealed
+    </a>
+    <span class="spacer"></span>
+    <a class="hide-sm" href="#how">How it works</a>
+    <a class="hide-sm" href="#objectives">Objectives</a>
+    <a class="hide-sm" href="#threat-model">Threat model</a>
+    <a class="cta" href="console.html">Console</a>
+    <button class="toggle" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Secure adversarial AI testing</p>
+    <h1>Isolate the attack, the defense, and the model — and prove it.</h1>
+    <p class="lead">AI safety teams test a model by having a red team attack it and a blue team defend it. When all three share one sandbox, the attack can leak to the defenders, the defense to the attackers, and the model gets contaminated between tests. Every finding is then quietly worthless. <strong>sealed</strong> keeps the three sealed off while they run together, records every action in a tamper-evident log, and states exactly what it does and doesn't protect.</p>
+    <div class="btn-row" style="margin-top:28px">
+      <a class="btn" href="console.html">Open the console</a>
+      <a class="btn ghost" href="https://github.com/ChethanValukuru/sealed-manali-" target="_blank" rel="noopener">View the source</a>
+    </div>
+  </div>
+</header>
+
+<section id="problem">
+  <div class="wrap">
+    <h2>Why shared sandboxes break safety testing</h2>
+    <div class="grid three">
+      <div class="card"><h3>Premature disclosure</h3><p class="muted">The red team's attack payload becomes visible to the blue team before a test concludes — the result is rigged.</p></div>
+      <div class="card"><h3>Context contamination</h3><p class="muted">A shared model carries state across tests: one test's planted prompt bleeds into the next.</p></div>
+      <div class="card"><h3>Cross-tenant leakage</h3><p class="muted">Containers share a kernel, network and inference backend — opening side channels standard isolation ignores.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <h2>How it works</h2>
+    <p class="lead" style="margin-bottom:28px">A broker mediates <em>all</em> traffic — there is no direct path between tenants. Every event is written to an append-only, cryptographically verifiable audit log.</p>
+
+    <svg class="diagram" viewBox="0 0 760 300" role="img" aria-label="Architecture: red, blue and model tenants connect only to the broker; the broker writes every event to a tamper-evident audit log; a one-way monitor records boundary violations.">
+      <!-- edges -->
+      <path class="edge" d="M150 70 H330" />
+      <path class="edge" d="M150 230 H330" />
+      <path class="edge" d="M150 150 H330" />
+      <path class="edge" d="M430 150 H560" />
+      <path class="edge" d="M495 185 V240 H560" />
+      <!-- tenants -->
+      <g><rect class="box" x="20" y="48" width="130" height="44" rx="8"/><text class="lbl" x="36" y="68">Red team</text><text class="sub" x="36" y="83">replays attacks</text></g>
+      <g><rect class="box" x="20" y="128" width="130" height="44" rx="8"/><text class="lbl" x="36" y="148">Model</text><text class="sub" x="36" y="163">fresh context / test</text></g>
+      <g><rect class="box" x="20" y="208" width="130" height="44" rx="8"/><text class="lbl" x="36" y="228">Blue team</text><text class="sub" x="36" y="243">trivial filter</text></g>
+      <!-- broker -->
+      <g><rect class="boxb" x="330" y="110" width="100" height="80" rx="10"/><text class="lbl" x="352" y="146">Broker</text><text class="sub" x="346" y="163">capability</text><text class="sub" x="346" y="176">tokens · gating</text></g>
+      <!-- audit + monitor -->
+      <g><rect class="box" x="560" y="128" width="175" height="46" rx="8"/><text class="lbl" x="576" y="148">Tamper-evident audit</text><text class="sub" x="576" y="164">hash chain · Ed25519</text></g>
+      <g><rect class="box" x="560" y="222" width="175" height="42" rx="8"/><text class="lbl" x="576" y="241">One-way monitor</text><text class="sub" x="576" y="256">writes, never read</text></g>
+    </svg>
+
+    <div class="grid two" style="margin-top:28px">
+      <div class="card"><h3>Isolation that holds</h3><p class="muted">Per-tenant networks (the broker is the only reachable peer), seccomp, dropped capabilities, read-only rootfs, and cgroup limits. No tenant can reach, see, or read another.</p></div>
+      <div class="card"><h3>Findings you can verify</h3><p class="muted">Every event is hash-chained and Ed25519-signed. Edit one entry and the verifier flags the exact break — safety findings become independently checkable.</p></div>
+      <div class="card"><h3>Fresh model, every test</h3><p class="muted">The model under test gets a clean context per test with no KV or conversation carryover, so one test cannot contaminate the next.</p></div>
+      <div class="card"><h3>Honest by construction</h3><p class="muted">A naive-vs-secure demo makes the leak visible, then contained; the threat model states plainly what remains out of scope.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="objectives">
+  <div class="wrap">
+    <h2>What it sets out to do</h2>
+    <ul class="obj">
+      <li><span class="n">01</span><span><span class="t">Isolate without breaking function</span><br><span class="d">The sealed eval loop still runs in real time — overhead is measured, not assumed.</span></span></li>
+      <li><span class="n">02</span><span><span class="t">Prevent information leakage</span><br><span class="d">Network segmentation, container isolation, disclosure gating, timing normalization.</span></span></li>
+      <li><span class="n">03</span><span><span class="t">Guarantee audit integrity</span><br><span class="d">Hash-chained, signed, append-only log with a verifier that pinpoints tampering.</span></span></li>
+      <li><span class="n">04</span><span><span class="t">Build for deployability</span><br><span class="d">Runs on a stock Linux VM with standard runtimes — no special hardware.</span></span></li>
+      <li><span class="n">05</span><span><span class="t">Address LLM-native threats</span><br><span class="d">Fresh context per test; output isolation; no cross-session contamination.</span></span></li>
+      <li><span class="n">06</span><span><span class="t">Quantify residual risk</span><br><span class="d">An honest threat model — the limits are stated as plainly as the guarantees.</span></span></li>
+    </ul>
+  </div>
+</section>
+
+<section id="threat-model">
+  <div class="wrap">
+    <h2>What it protects — and what it doesn't</h2>
+    <p class="lead" style="margin-bottom:26px">A safety tool you can't trust about its own limits is worthless. So the limits are stated here, not buried.</p>
+    <div class="tm">
+      <div class="col">
+        <h3><span class="dot ok"></span> In scope</h3>
+        <ul>
+          <li>Cross-tenant network, process and filesystem observation</li>
+          <li>Premature disclosure of red's payload to blue</li>
+          <li>Cross-session model contamination</li>
+          <li>Audit tampering (edit, insert, delete, reorder)</li>
+          <li>Unauthorized cross-role calls (capability tokens)</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3><span class="dot warn"></span> Partially mitigated</h3>
+        <ul>
+          <li>Timing side channels — normalized to a quantum, not eliminated</li>
+          <li>Resource-contention channels — cgroup-partitioned, not removed</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3><span class="dot bad"></span> Out of scope</h3>
+        <ul>
+          <li>CPU microarchitectural side channels on shared cores</li>
+          <li>A compromised host kernel or container engine</li>
+          <li>A malicious broker (it is trusted in this model)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>sealed — secure adversarial AI testing infrastructure.</span>
+    <span><a href="https://github.com/ChethanValukuru/sealed-manali-" target="_blank" rel="noopener">GitHub</a> · <a href="console.html">Console</a></span>
+  </div>
+</footer>
+
+<script>
+  var btn = document.getElementById('themeBtn');
+  btn && btn.addEventListener('click', function () {
+    var cur = document.documentElement.getAttribute('data-theme');
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var next = cur ? (cur === 'dark' ? 'light' : 'dark') : (prefersDark ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('sealed-theme', next); } catch (e) {}
+  });
+</script>
+</body>
+</html>
