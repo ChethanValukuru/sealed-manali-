@@ -3,15 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>sealed — trustworthy infrastructure for adversarial AI testing</title>
-<meta name="description" content="Run the red team, the blue team, and the model under test together — sealed off from each other, with a tamper-evident audit log and an honest threat model.">
+<title>sealed — safe, trustworthy AI security testing</title>
+<meta name="description" content="Test an AI model safely: let a team attack it and a team defend it at the same time, kept apart so neither can cheat, with a tamper-proof record of everything.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script>
-  // apply saved theme before paint
   try { var t = localStorage.getItem('sealed-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
 </script>
 </head>
@@ -25,8 +24,8 @@
     </a>
     <span class="spacer"></span>
     <a class="hide-sm" href="#how">How it works</a>
-    <a class="hide-sm" href="#objectives">Objectives</a>
-    <a class="hide-sm" href="#threat-model">Threat model</a>
+    <a class="hide-sm" href="#objectives">What it does</a>
+    <a class="hide-sm" href="#threat-model">Honest limits</a>
     <a class="cta" href="console.html">Console</a>
     <button class="toggle" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
   </div>
@@ -34,23 +33,35 @@
 
 <header class="hero">
   <div class="wrap">
-    <p class="eyebrow">Secure adversarial AI testing</p>
-    <h1>Isolate the attack, the defense, and the model — and prove it.</h1>
-    <p class="lead">AI safety teams test a model by having a red team attack it and a blue team defend it. When all three share one sandbox, the attack can leak to the defenders, the defense to the attackers, and the model gets contaminated between tests. Every finding is then quietly worthless. <strong>sealed</strong> keeps the three sealed off while they run together, records every action in a tamper-evident log, and states exactly what it does and doesn't protect.</p>
+    <p class="eyebrow">Safe AI security testing</p>
+    <h1>Test an AI safely — and trust the result.</h1>
+    <p class="lead">To check if an AI is safe, one team tries to trick it (the <strong>attackers</strong>) while another team defends it (the <strong>defenders</strong>). The catch: if they all share one space, they can peek at each other and the AI can get confused between tests — so the result can't be trusted. <strong>sealed</strong> keeps everyone in separate rooms, lets them work at the same time, and keeps a record no one can secretly change.</p>
     <div class="btn-row" style="margin-top:28px">
-      <a class="btn" href="console.html">Open the console</a>
+      <a class="btn" href="console.html">See it in action</a>
       <a class="btn ghost" href="https://github.com/ChethanValukuru/sealed-manali-" target="_blank" rel="noopener">View the source</a>
     </div>
   </div>
 </header>
 
+<section id="plain">
+  <div class="wrap">
+    <h2>The simple idea</h2>
+    <p class="lead" style="margin-bottom:24px">Think of testing a bank vault. You hire people to try to break in, and people to defend it. If the two groups can watch each other — or if someone can edit the security camera footage — the test proves nothing.</p>
+    <div class="grid three">
+      <div class="card"><h3>Separate rooms</h3><p class="muted">The attackers, the defenders, and the AI each work in their own locked space. None can see or reach the others.</p></div>
+      <div class="card"><h3>A trusted go-between</h3><p class="muted">All messages pass through one honest middleman. It decides who is allowed to see what, and when.</p></div>
+      <div class="card"><h3>Tamper-proof record</h3><p class="muted">Every action is written down in a way that makes any later edit obvious — so the findings hold up.</p></div>
+    </div>
+  </div>
+</section>
+
 <section id="problem">
   <div class="wrap">
-    <h2>Why shared sandboxes break safety testing</h2>
+    <h2>What goes wrong without it</h2>
     <div class="grid three">
-      <div class="card"><h3>Premature disclosure</h3><p class="muted">The red team's attack payload becomes visible to the blue team before a test concludes — the result is rigged.</p></div>
-      <div class="card"><h3>Context contamination</h3><p class="muted">A shared model carries state across tests: one test's planted prompt bleeds into the next.</p></div>
-      <div class="card"><h3>Cross-tenant leakage</h3><p class="muted">Containers share a kernel, network and inference backend — opening side channels standard isolation ignores.</p></div>
+      <div class="card"><h3>The defenders peek</h3><p class="muted">If the defenders can see the attack before the test is over, they can quietly prepare for it — and the "pass" is fake.</p></div>
+      <div class="card"><h3>The AI gets confused</h3><p class="muted">If the AI remembers the last test, a trick from one test can carry over and spoil the next one.</p></div>
+      <div class="card"><h3>Hidden leaks</h3><p class="muted">Sharing the same machine opens subtle side-channels (timing, shared memory) that ordinary setups ignore.</p></div>
     </div>
   </div>
 </section>
@@ -58,31 +69,27 @@
 <section id="how">
   <div class="wrap">
     <h2>How it works</h2>
-    <p class="lead" style="margin-bottom:28px">A broker mediates <em>all</em> traffic — there is no direct path between tenants. Every event is written to an append-only, cryptographically verifiable audit log.</p>
+    <p class="lead" style="margin-bottom:28px">Everything flows through one trusted go-between — the <strong>broker</strong>. There's no direct line between the teams, and every step is recorded.</p>
 
-    <svg class="diagram" viewBox="0 0 760 300" role="img" aria-label="Architecture: red, blue and model tenants connect only to the broker; the broker writes every event to a tamper-evident audit log; a one-way monitor records boundary violations.">
-      <!-- edges -->
+    <svg class="diagram" viewBox="0 0 760 300" role="img" aria-label="The attacker, the AI model, and the defender each connect only to the broker in the middle. The broker writes every event to a tamper-proof record, and a one-way watcher logs any rule-breaking.">
       <path class="edge" d="M150 70 H330" />
       <path class="edge" d="M150 230 H330" />
       <path class="edge" d="M150 150 H330" />
       <path class="edge" d="M430 150 H560" />
       <path class="edge" d="M495 185 V240 H560" />
-      <!-- tenants -->
-      <g><rect class="box" x="20" y="48" width="130" height="44" rx="8"/><text class="lbl" x="36" y="68">Red team</text><text class="sub" x="36" y="83">replays attacks</text></g>
-      <g><rect class="box" x="20" y="128" width="130" height="44" rx="8"/><text class="lbl" x="36" y="148">Model</text><text class="sub" x="36" y="163">fresh context / test</text></g>
-      <g><rect class="box" x="20" y="208" width="130" height="44" rx="8"/><text class="lbl" x="36" y="228">Blue team</text><text class="sub" x="36" y="243">trivial filter</text></g>
-      <!-- broker -->
-      <g><rect class="boxb" x="330" y="110" width="100" height="80" rx="10"/><text class="lbl" x="352" y="146">Broker</text><text class="sub" x="346" y="163">capability</text><text class="sub" x="346" y="176">tokens · gating</text></g>
-      <!-- audit + monitor -->
-      <g><rect class="box" x="560" y="128" width="175" height="46" rx="8"/><text class="lbl" x="576" y="148">Tamper-evident audit</text><text class="sub" x="576" y="164">hash chain · Ed25519</text></g>
-      <g><rect class="box" x="560" y="222" width="175" height="42" rx="8"/><text class="lbl" x="576" y="241">One-way monitor</text><text class="sub" x="576" y="256">writes, never read</text></g>
+      <g><rect class="box" x="20" y="48" width="130" height="44" rx="8"/><text class="lbl" x="36" y="68">Attackers</text><text class="sub" x="36" y="83">try to trick the AI</text></g>
+      <g><rect class="box" x="20" y="128" width="130" height="44" rx="8"/><text class="lbl" x="36" y="148">The AI</text><text class="sub" x="36" y="163">clean memory each test</text></g>
+      <g><rect class="box" x="20" y="208" width="130" height="44" rx="8"/><text class="lbl" x="36" y="228">Defenders</text><text class="sub" x="36" y="243">check the answer</text></g>
+      <g><rect class="boxb" x="330" y="110" width="100" height="80" rx="10"/><text class="lbl" x="347" y="144">Broker</text><text class="sub" x="346" y="162">the trusted</text><text class="sub" x="346" y="175">go-between</text></g>
+      <g><rect class="box" x="560" y="128" width="175" height="46" rx="8"/><text class="lbl" x="576" y="148">Tamper-proof record</text><text class="sub" x="576" y="164">any edit is detectable</text></g>
+      <g><rect class="box" x="560" y="222" width="175" height="42" rx="8"/><text class="lbl" x="576" y="241">Security watcher</text><text class="sub" x="576" y="256">logs rule-breaking</text></g>
     </svg>
 
     <div class="grid two" style="margin-top:28px">
-      <div class="card"><h3>Isolation that holds</h3><p class="muted">Per-tenant networks (the broker is the only reachable peer), seccomp, dropped capabilities, read-only rootfs, and cgroup limits. No tenant can reach, see, or read another.</p></div>
-      <div class="card"><h3>Findings you can verify</h3><p class="muted">Every event is hash-chained and Ed25519-signed. Edit one entry and the verifier flags the exact break — safety findings become independently checkable.</p></div>
-      <div class="card"><h3>Fresh model, every test</h3><p class="muted">The model under test gets a clean context per test with no KV or conversation carryover, so one test cannot contaminate the next.</p></div>
-      <div class="card"><h3>Honest by construction</h3><p class="muted">A naive-vs-secure demo makes the leak visible, then contained; the threat model states plainly what remains out of scope.</p></div>
+      <div class="card"><h3>Walls that hold</h3><p class="muted">Each team is boxed in so it can't reach, see, or read any other team. <span class="muted">(Done with separate networks, locked-down containers, and strict permissions.)</span></p></div>
+      <div class="card"><h3>Results you can check yourself</h3><p class="muted">The record is signed and chained together. Change one line and a quick check points to the exact spot — proof the findings are real. <span class="muted">(A hash chain with digital signatures.)</span></p></div>
+      <div class="card"><h3>A fresh AI every test</h3><p class="muted">The AI starts each test with a blank memory, so nothing carries over from the last one.</p></div>
+      <div class="card"><h3>Honest about limits</h3><p class="muted">A side-by-side demo shows the leak happening, then shows it blocked — and the limits page says plainly what it doesn't cover.</p></div>
     </div>
   </div>
 </section>
@@ -91,12 +98,12 @@
   <div class="wrap">
     <h2>What it sets out to do</h2>
     <ul class="obj">
-      <li><span class="n">01</span><span><span class="t">Isolate without breaking function</span><br><span class="d">The sealed eval loop still runs in real time — overhead is measured, not assumed.</span></span></li>
-      <li><span class="n">02</span><span><span class="t">Prevent information leakage</span><br><span class="d">Network segmentation, container isolation, disclosure gating, timing normalization.</span></span></li>
-      <li><span class="n">03</span><span><span class="t">Guarantee audit integrity</span><br><span class="d">Hash-chained, signed, append-only log with a verifier that pinpoints tampering.</span></span></li>
-      <li><span class="n">04</span><span><span class="t">Build for deployability</span><br><span class="d">Runs on a stock Linux VM with standard runtimes — no special hardware.</span></span></li>
-      <li><span class="n">05</span><span><span class="t">Address LLM-native threats</span><br><span class="d">Fresh context per test; output isolation; no cross-session contamination.</span></span></li>
-      <li><span class="n">06</span><span><span class="t">Quantify residual risk</span><br><span class="d">An honest threat model — the limits are stated as plainly as the guarantees.</span></span></li>
+      <li><span class="n">01</span><span><span class="t">Stay fast while staying safe</span><br><span class="d">The extra security doesn't slow the test down to a crawl — the overhead is measured, not guessed.</span></span></li>
+      <li><span class="n">02</span><span><span class="t">Stop information leaking</span><br><span class="d">Teams can't reach, watch, or read each other; the attack stays hidden from the defenders until the test ends.</span></span></li>
+      <li><span class="n">03</span><span><span class="t">Keep an honest record</span><br><span class="d">A tamper-proof log where any change is caught — and pointed to exactly.</span></span></li>
+      <li><span class="n">04</span><span><span class="t">Run anywhere normal</span><br><span class="d">Works on an ordinary cloud server with standard tools — no special hardware.</span></span></li>
+      <li><span class="n">05</span><span><span class="t">Handle AI-specific risks</span><br><span class="d">A fresh AI memory per test, so one test can't poison the next.</span></span></li>
+      <li><span class="n">06</span><span><span class="t">Be honest about the gaps</span><br><span class="d">The limits are written down as clearly as the protections.</span></span></li>
     </ul>
   </div>
 </section>
@@ -104,40 +111,52 @@
 <section id="threat-model">
   <div class="wrap">
     <h2>What it protects — and what it doesn't</h2>
-    <p class="lead" style="margin-bottom:26px">A safety tool you can't trust about its own limits is worthless. So the limits are stated here, not buried.</p>
+    <p class="lead" style="margin-bottom:26px">A security tool you can't trust about its own limits isn't worth much. So here's the honest version, in plain terms.</p>
     <div class="tm">
       <div class="col">
-        <h3><span class="dot ok"></span> In scope</h3>
+        <h3><span class="dot ok"></span> It stops these</h3>
         <ul>
-          <li>Cross-tenant network, process and filesystem observation</li>
-          <li>Premature disclosure of red's payload to blue</li>
-          <li>Cross-session model contamination</li>
-          <li>Audit tampering (edit, insert, delete, reorder)</li>
-          <li>Unauthorized cross-role calls (capability tokens)</li>
+          <li>Teams spying on each other's files, programs, or network</li>
+          <li>Defenders seeing the attack too early</li>
+          <li>One test's trick leaking into the next</li>
+          <li>Anyone secretly editing the record</li>
+          <li>A team calling something it isn't allowed to</li>
         </ul>
       </div>
       <div class="col">
-        <h3><span class="dot warn"></span> Partially mitigated</h3>
+        <h3><span class="dot warn"></span> It reduces these</h3>
         <ul>
-          <li>Timing side channels — normalized to a quantum, not eliminated</li>
-          <li>Resource-contention channels — cgroup-partitioned, not removed</li>
+          <li>Timing clues — smoothed out, but not perfectly erased</li>
+          <li>Shared-resource clues — limited per team, not fully removed</li>
         </ul>
       </div>
       <div class="col">
-        <h3><span class="dot bad"></span> Out of scope</h3>
+        <h3><span class="dot bad"></span> It doesn't claim these</h3>
         <ul>
-          <li>CPU microarchitectural side channels on shared cores</li>
-          <li>A compromised host kernel or container engine</li>
-          <li>A malicious broker (it is trusted in this model)</li>
+          <li>Deep chip-level leaks on shared processors</li>
+          <li>A hacked server or operating system</li>
+          <li>A dishonest go-between (the broker is trusted here)</li>
         </ul>
       </div>
     </div>
   </div>
 </section>
 
+<section id="glossary">
+  <div class="wrap">
+    <h2>A few words, explained</h2>
+    <div class="grid two">
+      <div class="card"><h3>Red team / attackers</h3><p class="muted">People (or scripts) whose job is to try to break or trick the system.</p></div>
+      <div class="card"><h3>Blue team / defenders</h3><p class="muted">People (or tools) whose job is to catch and block those attacks.</p></div>
+      <div class="card"><h3>Audit log</h3><p class="muted">A running list of everything that happened — here, built so it can't be quietly changed.</p></div>
+      <div class="card"><h3>Side-channel</h3><p class="muted">An indirect leak — learning a secret from timing or shared resources instead of the data itself.</p></div>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="wrap">
-    <span>sealed — secure adversarial AI testing infrastructure.</span>
+    <span>sealed — safe, trustworthy AI security testing.</span>
     <span><a href="https://github.com/ChethanValukuru/sealed-manali-" target="_blank" rel="noopener">GitHub</a> · <a href="console.html">Console</a></span>
   </div>
 </footer>

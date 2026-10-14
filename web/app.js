@@ -67,30 +67,55 @@
   var GOOD = { enforced: 1, on: 1, one_way: 1, dropped_all: 1, read_only: 1 };
   var SOFT = { off: 1, disabled: 1, stateless_calls: 1, not_yet_enforced: 1 };
 
-  function healthBadge(v) {
+  // Plain-English label for each technical status key.
+  var FRIENDLY = {
+    network_segmentation: "Teams can't reach each other",
+    seccomp: "Dangerous actions blocked",
+    capabilities: "Extra powers removed",
+    rootfs: "Files locked (read-only)",
+    cgroups: "Resources capped per team",
+    model_context_fresh: "AI memory wiped each test",
+    capability_tokens: "Only allowed calls permitted",
+    disclosure_gating: "Attack hidden from defenders",
+    timing_normalization: "Timing leaks smoothed",
+    monitor: "Security watcher"
+  };
+  // Plain-English version of each status value.
+  var VALUE = {
+    enforced: "on", on: "on", one_way: "one-way", dropped_all: "removed",
+    read_only: "locked", off: "off", disabled: "off",
+    stateless_calls: "fresh", not_yet_enforced: "not yet"
+  };
+
+  function badgeClass(v) {
     var s = String(v);
-    if (GOOD[s]) return '<span class="badge ok">' + s + "</span>";
-    if (SOFT[s]) return '<span class="badge warn">' + s + "</span>";
-    return '<span class="badge idle">' + s + "</span>";
+    if (GOOD[s]) return "ok";
+    if (SOFT[s]) return "warn";
+    return "idle";
   }
 
   async function renderHealth() {
     var box = $("health");
     if (!connected.broker) {
-      box.innerHTML = '<div class="empty"><div class="big">Not connected</div>Connect to a running broker to see live boundary status.</div>';
+      box.innerHTML = '<div class="empty"><div class="big">Not connected</div>Connect to see which protections are active.</div>';
       return;
     }
     var res = await getJSON(trim(urls.broker) + "/health/isolation");
     if (!res.ok || !res.data) {
-      box.innerHTML = '<div class="empty"><div class="big">Unavailable</div>The broker is reachable but did not return isolation status.</div>';
+      box.innerHTML = '<div class="empty"><div class="big">Unavailable</div>The system is reachable but did not report its protections.</div>';
       return;
     }
     var rows = "";
     Object.keys(res.data).forEach(function (k) {
       if (k === "proven_by" || k === "note") return;
-      rows += '<div class="row"><span class="key">' + k.replace(/_/g, " ") + "</span>" + healthBadge(res.data[k]) + "</div>";
+      var raw = res.data[k];
+      var label = FRIENDLY[k] || k.replace(/_/g, " ");
+      var val = VALUE[String(raw)] || String(raw);
+      rows += '<div class="row"><span class="key">' + label +
+        '<br><span class="tech">' + k.replace(/_/g, " ") + '</span></span>' +
+        '<span class="badge ' + badgeClass(raw) + '">' + val + "</span></div>";
     });
-    box.innerHTML = rows || '<div class="empty">No status fields returned.</div>';
+    box.innerHTML = rows || '<div class="empty">No status reported.</div>';
   }
 
   async function renderLog() {
@@ -126,32 +151,41 @@
     out.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
   }
 
+  function showResult(summary, data) {
+    showOut(summary + "\n\n— details —\n" + JSON.stringify(data, null, 2));
+  }
+
   async function runEval() {
-    showOut("Running eval cycle…");
+    showOut("Running a test…");
     var res = await getJSON(trim(urls.red) + "/run", { method: "POST" });
-    showOut(res.ok ? res.data : "Request failed — is the red service reachable?");
+    if (!res.ok || !res.data) { showOut("Couldn't reach your system. Is it running?"); return; }
+    var rs = res.data.results || [];
+    var refused = rs.filter(function (r) { return r.verdict === "refused"; }).length;
+    var flagged = rs.filter(function (r) { return r.flagged; }).length;
+    showResult("Ran " + (res.data.attacks_run || rs.length) + " attacks. The AI refused " +
+      refused + ", and the defenders flagged " + flagged + " as unsafe.", res.data);
     await renderLog();
   }
 
   async function runContam() {
-    showOut("Planting in test A, probing in test B…");
+    showOut("Planting a secret in one test, then asking for it in a separate test…");
     var res = await getJSON(trim(urls.red) + "/run_contamination", { method: "POST" });
-    if (res.ok && res.data) {
-      res.data._verdict = res.data.leaked ? "LEAKED — contamination" : "clean — fresh context held";
-    }
-    showOut(res.ok ? res.data : "Request failed — is the red service reachable?");
+    if (!res.ok || !res.data) { showOut("Couldn't reach your system. Is it running?"); return; }
+    var msg = res.data.leaked
+      ? "⚠ Leak: the AI remembered the secret across tests."
+      : "✓ Clean: the AI had no memory of the earlier test.";
+    showResult(msg, res.data);
     await renderLog();
   }
 
   async function verify() {
-    showOut("Re-walking the hash chain…");
+    showOut("Re-checking every entry in the record…");
     var res = await getJSON(trim(urls.audit) + "/verify", { method: "POST" });
-    if (res.ok && res.data) {
-      res.data._verdict = res.data.intact
-        ? "INTACT — chain + signatures verified"
-        : "TAMPER at seq " + res.data.broken_seq + ": " + res.data.reason;
-    }
-    showOut(res.ok ? res.data : "Request failed — is the audit service reachable?");
+    if (!res.ok || !res.data) { showOut("Couldn't reach the record. Is your system running?"); return; }
+    var msg = res.data.intact
+      ? "✓ Untampered: every entry checks out."
+      : "⚠ Tampering found at entry " + res.data.broken_seq + " (" + res.data.reason + ").";
+    showResult(msg, res.data);
   }
 
   function connect() {

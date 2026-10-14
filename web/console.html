@@ -30,12 +30,13 @@
 </nav>
 
 <main class="wrap" style="padding-top:36px; padding-bottom:56px">
-  <h1 style="font-size:clamp(1.6rem,4vw,2.3rem)">Console</h1>
-  <p class="muted" style="max-width:62ch">This console talks to <em>your own</em> running <code>sealed</code> backend — it shows real data or nothing at all. Start the stack with <code>make up</code>, then connect below.</p>
+  <h1 style="font-size:clamp(1.6rem,4vw,2.3rem)">Live console</h1>
+  <p class="muted" style="max-width:64ch">This page connects to <em>your own</em> running copy of sealed and shows what's really happening — or nothing at all if it isn't running. Start it with <code>make up</code>, then press Connect below. Everything here is real; no numbers are made up.</p>
 
   <!-- connection settings -->
   <div class="panel">
-    <h3>Backend</h3>
+    <h3>Connect to your system</h3>
+    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">Where your running system lives. The defaults work if it's on this computer.</p>
     <div class="settings">
       <div class="field"><label for="broker">Broker URL</label><input id="broker" value="http://localhost:8000" spellcheck="false"></div>
       <div class="field"><label for="audit">Audit URL</label><input id="audit" value="http://localhost:8001" spellcheck="false"></div>
@@ -52,25 +53,28 @@
 
   <!-- isolation health -->
   <div class="panel">
-    <h3>Isolation health</h3>
-    <div id="health"><div class="empty"><div class="big">Not connected</div>Connect to a running broker to see live boundary status.</div></div>
+    <h3>Protections</h3>
+    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">The walls between the teams. <span class="badge ok" style="font-weight:600">green</span> means a protection is switched on.</p>
+    <div id="health"><div class="empty"><div class="big">Not connected</div>Connect to see which protections are active.</div></div>
   </div>
 
   <!-- actions -->
   <div class="panel">
-    <h3>Run</h3>
+    <h3>Try it</h3>
+    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">Each button runs one real action against your system and shows the result.</p>
     <div class="btn-row">
-      <button class="btn sm" id="runEval" disabled>Run eval cycle</button>
-      <button class="btn sm ghost" id="runContam" disabled>Run contamination probe</button>
-      <button class="btn sm ghost" id="verifyBtn" disabled>Verify audit integrity</button>
+      <button class="btn sm" id="runEval" disabled>Run a test</button>
+      <button class="btn sm ghost" id="runContam" disabled>Check for memory leaks</button>
+      <button class="btn sm ghost" id="verifyBtn" disabled>Check the record is untampered</button>
     </div>
     <pre class="out" id="out" style="margin-top:14px; display:none"></pre>
   </div>
 
   <!-- audit log -->
   <div class="panel">
-    <h3>Audit log <span class="badge idle" id="auditCount" style="font-weight:600"></span></h3>
-    <div id="logWrap"><div class="empty"><div class="big">No events yet</div>Connect to the audit service, or run an eval to generate events.</div></div>
+    <h3>The record <span class="badge idle" id="auditCount" style="font-weight:600"></span></h3>
+    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">Every action, in order. Nothing here can be removed or quietly changed.</p>
+    <div id="logWrap"><div class="empty"><div class="big">Nothing recorded yet</div>Connect, or run a test to create some activity.</div></div>
   </div>
 </main>
 
