@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sealed — a 1-minute walkthrough</title>
+<meta name="description" content="A simple animated walkthrough: why testing an AI in a shared space can't be trusted, and how sealed fixes it.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>
+  try { var t = localStorage.getItem('sealed-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<style>
+  .stage-wrap { max-width: 760px; margin: 18px auto 0; }
+  .stage {
+    position: relative; width: 100%; aspect-ratio: 8 / 5;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; overflow: hidden;
+  }
+  .scene { position: absolute; inset: 0; display: none; }
+  .scene.active { display: block; }
+  .scene svg { width: 100%; height: 100%; display: block; }
+
+  /* svg primitives */
+  .b { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.6; }
+  .b2 { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.6; }
+  .bad { fill: color-mix(in srgb, var(--bad) 16%, var(--surface)); stroke: var(--bad); stroke-width: 1.6; }
+  .t { fill: var(--text); font-family: var(--sans); font-size: 15px; font-weight: 600; }
+  .s { fill: var(--muted); font-family: var(--sans); font-size: 12px; }
+  .edge { stroke: var(--line-strong); stroke-width: 1.6; fill: none; }
+  .edge.on { stroke: var(--accent); }
+  .note { fill: var(--bad); }
+  .tok { fill: var(--accent); }
+  .wall { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+  .xmk { stroke: var(--bad); stroke-width: 2.4; stroke-linecap: round; }
+
+  /* motion (subtle, calm) */
+  @keyframes leak { 0%,8%{transform:translate(0,0);opacity:0} 14%{opacity:1} 86%{opacity:1} 100%{transform:translate(250px,110px);opacity:0} }
+  @keyframes carry { 0%,10%{opacity:0;transform:translateY(0)} 20%{opacity:1} 80%{opacity:1} 100%{opacity:.2;transform:translateY(-6px)} }
+  @keyframes flowRight { 0%{transform:translateX(0);opacity:0} 12%{opacity:1} 88%{opacity:1} 100%{transform:translateX(170px);opacity:0} }
+  @keyframes flowRight2 { 0%,40%{transform:translateX(0);opacity:0} 50%{opacity:1} 92%{opacity:1} 100%{transform:translateX(170px);opacity:0} }
+  @keyframes blocked { 0%{transform:translateX(0);opacity:0} 20%{opacity:1} 55%{transform:translateX(96px);opacity:1} 75%{transform:translateX(70px);opacity:1} 100%{transform:translateX(0);opacity:0} }
+  @keyframes wipe { 0%,20%{transform:translateX(-140px);opacity:0} 35%{opacity:.9} 60%{transform:translateX(140px);opacity:.9} 70%,100%{opacity:0} }
+  @keyframes appear { 0%,30%{opacity:0;transform:scale(.9)} 45%{opacity:1;transform:scale(1)} 100%{opacity:1} }
+  @keyframes flag { 0%,55%{opacity:0} 65%{opacity:1} 100%{opacity:1} }
+  @keyframes pulse { 0%,100%{opacity:.55} 50%{opacity:1} }
+  @keyframes dash { to { stroke-dashoffset: -16; } }
+
+  .scene.active .leak { animation: leak 3.6s ease-in-out infinite; }
+  .scene.active .carry { animation: carry 3.6s ease-in-out infinite; }
+  .scene.active .fr { animation: flowRight 3.4s ease-in-out infinite; }
+  .scene.active .fr2 { animation: flowRight2 3.4s ease-in-out infinite; }
+  .scene.active .blk { animation: blocked 3.4s ease-in-out infinite; transform-box: fill-box; }
+  .scene.active .wipe { animation: wipe 3.6s ease-in-out infinite; }
+  .scene.active .row2 { animation: appear 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: left center; }
+  .scene.active .caught { animation: flag 3.4s ease-in-out infinite; }
+  .scene.active .pulse { animation: pulse 2.6s ease-in-out infinite; }
+  .flowline { stroke-dasharray: 5 6; animation: dash 1s linear infinite; }
+
+  /* controls + caption */
+  .caption { max-width: 640px; margin: 20px auto 0; text-align: center; }
+  .caption .k { font-family: var(--serif); font-size: 1.25rem; margin-bottom: 6px; }
+  .caption .c { color: var(--muted); }
+  .controls { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 22px auto 0; }
+  .dots { display: flex; gap: 7px; }
+  .dot2 { width: 9px; height: 9px; border-radius: 50%; background: var(--line-strong); border: 0; padding: 0; cursor: pointer; }
+  .dot2.on { background: var(--accent); }
+  .nbtn { background: transparent; border: 1px solid var(--line-strong); color: var(--text); border-radius: 8px; width: 40px; height: 40px; cursor: pointer; font-size: 1rem; display: grid; place-items: center; }
+  .nbtn:hover { border-color: var(--muted); }
+  .nbtn.play { width: auto; padding: 0 16px; gap: 8px; font-weight: 600; }
+  .count { color: var(--muted); font-size: .85rem; min-width: 42px; text-align: center; }
+  @media (max-width: 760px) { .caption .k { font-size: 1.1rem; } }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="7" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="9" y="9" width="14" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="14" y="14" width="4" height="4" rx="1.2" fill="currentColor"/></svg>
+      sealed
+    </a>
+    <span class="spacer"></span>
+    <a href="/" class="hide-sm">Overview</a>
+    <a href="console.html" class="cta">Console</a>
+    <button class="toggle" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+  </div>
+</nav>
+
+<main class="wrap" style="padding:28px 24px 48px">
+  <div style="text-align:center">
+    <p class="eyebrow" style="margin-bottom:.6em">A 1-minute walkthrough</p>
+    <h1 style="font-size:clamp(1.5rem,4vw,2.1rem); margin:0">How sealed works, step by step</h1>
+  </div>
+
+  <div class="stage-wrap">
+    <div class="stage" id="stage">
+
+      <!-- 1. The test -->
+      <div class="scene active">
+        <svg viewBox="0 0 640 400" role="img" aria-label="Three groups: attackers, the AI, and defenders.">
+          <g class="pulse"><rect class="b" x="40" y="60" width="150" height="70" rx="10"/><text class="t" x="60" y="95">Attackers</text><text class="s" x="60" y="114">try to trick the AI</text></g>
+          <g><rect class="b2" x="245" y="165" width="150" height="70" rx="10"/><text class="t" x="275" y="200">The AI</text><text class="s" x="268" y="219">being tested</text></g>
+          <g class="pulse"><rect class="b" x="450" y="270" width="150" height="70" rx="10"/><text class="t" x="470" y="305">Defenders</text><text class="s" x="470" y="324">catch the tricks</text></g>
+        </svg>
+      </div>
+
+      <!-- 2. The problem -->
+      <div class="scene">
+        <svg viewBox="0 0 640 400" role="img" aria-label="All three share one room; a secret note leaks from attackers to defenders.">
+          <rect x="30" y="40" width="580" height="320" rx="14" fill="none" stroke="var(--bad)" stroke-width="1.6" stroke-dasharray="7 7"/>
+          <text class="s" x="46" y="30" style="font-size:13px; fill:var(--bad)">one shared room</text>
+          <g><rect class="b" x="60" y="90" width="140" height="64" rx="10"/><text class="t" x="80" y="120">Attackers</text></g>
+          <g><rect class="b2" x="250" y="168" width="140" height="64" rx="10"/><text class="t" x="280" y="200">The AI</text>
+            <g class="carry"><rect x="300" y="138" width="46" height="20" rx="6" fill="var(--muted)" opacity=".5"/><text x="308" y="152" style="font-size:10px; fill:var(--surface)">memory</text></g>
+          </g>
+          <g><rect class="b" x="440" y="250" width="140" height="64" rx="10"/><text class="t" x="460" y="282">Defenders</text></g>
+          <g class="leak"><rect class="note" x="150" y="120" width="40" height="26" rx="5"/><text x="158" y="137" style="font-size:9px; fill:#fff">attack</text></g>
+          <g class="caught"><rect class="bad" x="230" y="330" width="190" height="30" rx="8"/><text x="246" y="350" style="font-size:12px; fill:var(--bad); font-weight:600">Result can't be trusted</text></g>
+        </svg>
+      </div>
+
+      <!-- 3. The fix: separate rooms + broker -->
+      <div class="scene">
+        <svg viewBox="0 0 640 400" role="img" aria-label="Separate rooms connect only to a broker in the middle; the raw attack is blocked from the defenders.">
+          <g><rect class="b" x="30" y="50" width="130" height="60" rx="10"/><text class="t" x="48" y="85">Attackers</text></g>
+          <g><rect class="b" x="30" y="170" width="130" height="60" rx="10"/><text class="t" x="66" y="205">The AI</text></g>
+          <g><rect class="b" x="30" y="290" width="130" height="60" rx="10"/><text class="t" x="48" y="325">Defenders</text></g>
+          <g><rect class="b2" x="270" y="160" width="110" height="80" rx="12"/><text class="t" x="292" y="196">Broker</text><text class="s" x="286" y="214">go-between</text></g>
+          <path class="edge flowline" d="M160 80 H270 V170"/>
+          <path class="edge flowline" d="M160 200 H270"/>
+          <path class="edge flowline on" d="M380 200 H470 V320 H470"/>
+          <path class="edge" d="M160 320 H470"/>
+          <!-- attack goes to broker -->
+          <g class="fr"><rect class="note" x="170" y="68" width="36" height="22" rx="5"/><text x="176" y="84" style="font-size:9px; fill:#fff">attack</text></g>
+          <!-- only the answer reaches defenders -->
+          <g class="fr2"><rect class="tok" x="300" y="300" width="40" height="22" rx="5"/><text x="306" y="316" style="font-size:9px; fill:#fff">answer</text></g>
+          <!-- raw attack blocked from defenders -->
+          <g class="blk" style="transform-origin:0 0"><rect class="note" x="300" y="300" width="36" height="22" rx="5" opacity=".9"/></g>
+          <line class="wall" x1="430" y1="300" x2="430" y2="344"/>
+          <text class="s" x="200" y="372" style="fill:var(--accent)">the raw attack never reaches the defenders until the test ends</text>
+        </svg>
+      </div>
+
+      <!-- 4. Fresh AI each test -->
+      <div class="scene">
+        <svg viewBox="0 0 640 400" role="img" aria-label="Between tests the AI memory is wiped, so a secret from test one does not appear in test two.">
+          <g><rect class="b2" x="230" y="150" width="180" height="100" rx="14"/><text class="t" x="258" y="188">The AI</text><text class="s" x="258" y="208">memory wiped</text><text class="s" x="258" y="224">between tests</text>
+            <rect class="wipe" x="235" y="155" width="26" height="90" rx="6" fill="var(--accent)"/>
+          </g>
+          <g><rect class="b" x="60" y="70" width="150" height="50" rx="10"/><text class="s" x="76" y="92" style="font-size:11px">Test 1 plants:</text><text class="t" x="76" y="110" style="font-size:13px">"secret = 4417"</text></g>
+          <g><rect class="b" x="430" y="280" width="170" height="50" rx="10"/><text class="s" x="446" y="302" style="font-size:11px">Test 2 asks for it:</text><text class="t" x="446" y="320" style="font-size:13px; fill:var(--accent)">"I don't know" ✓</text></g>
+        </svg>
+      </div>
+
+      <!-- 5. Tamper-proof record -->
+      <div class="scene">
+        <svg viewBox="0 0 640 400" role="img" aria-label="Every action is recorded in a chained log; editing a row is caught.">
+          <text class="t" x="60" y="70">The record</text>
+          <g>
+            <rect class="b" x="60" y="90" width="520" height="34" rx="8"/><text class="s" x="76" y="112">#1 · attack sent</text>
+            <rect class="b" x="60" y="132" width="520" height="34" rx="8"/><text class="s" x="76" y="154">#2 · AI answered</text>
+            <rect class="bad row2" x="60" y="174" width="520" height="34" rx="8"/><text class="s" x="76" y="196" style="fill:var(--bad)">#3 · edited by someone</text>
+            <rect class="b" x="60" y="216" width="520" height="34" rx="8"/><text class="s" x="76" y="238">#4 · defender's verdict</text>
+          </g>
+          <g class="caught"><rect class="bad" x="60" y="275" width="300" height="34" rx="8"/><text x="78" y="297" style="font-size:13px; fill:var(--bad); font-weight:600">⚠ Tampering caught at #3</text></g>
+          <text class="s" x="60" y="345">each entry is locked to the one before it, so any edit shows</text>
+        </svg>
+      </div>
+
+      <!-- 6. Honest limits -->
+      <div class="scene">
+        <svg viewBox="0 0 640 400" role="img" aria-label="It stops many attacks, reduces some leaks, and is honest about what it cannot do.">
+          <g><rect class="b2" x="40" y="110" width="170" height="170" rx="12"/><circle cx="60" cy="140" r="5" fill="var(--ok)"/><text class="t" x="76" y="145" style="font-size:13px">It stops</text><text class="s" x="56" y="175">peeking</text><text class="s" x="56" y="197">contamination</text><text class="s" x="56" y="219">tampering</text></g>
+          <g><rect class="b" x="235" y="110" width="170" height="170" rx="12"/><circle cx="255" cy="140" r="5" fill="var(--warn)"/><text class="t" x="271" y="145" style="font-size:13px">It reduces</text><text class="s" x="251" y="175">timing clues</text><text class="s" x="251" y="197">shared-use clues</text></g>
+          <g><rect class="b" x="430" y="110" width="170" height="170" rx="12"/><circle cx="450" cy="140" r="5" fill="var(--bad)"/><text class="t" x="466" y="145" style="font-size:13px">It won't claim</text><text class="s" x="446" y="175">chip-level leaks</text><text class="s" x="446" y="197">a hacked server</text></g>
+          <text class="s" x="140" y="330" style="font-size:13px">Honest about its limits — that's what makes it trustworthy.</text>
+        </svg>
+      </div>
+
+    </div>
+
+    <div class="caption">
+      <div class="k" id="capK"></div>
+      <div class="c" id="capC"></div>
+    </div>
+
+    <div class="controls">
+      <button class="nbtn" id="prev" aria-label="Previous">‹</button>
+      <button class="nbtn play" id="play"><span id="playIcon">❚❚</span> <span id="playTxt">Pause</span></button>
+      <button class="nbtn" id="next" aria-label="Next">›</button>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="controls" style="margin-top:14px"><div class="dots" id="dots"></div></div>
+    <p class="muted" style="text-align:center; font-size:.82rem; margin-top:16px">Use ← → to move · space to pause · <a href="console.html">try the real thing →</a></p>
+  </div>
+</main>
+
+<script>
+  var CAPS = [
+    ["The test", "To check an AI is safe, one team tries to trick it and another team defends it — at the same time."],
+    ["The problem", "If they share one space, the defenders can peek at the attack and the AI gets confused between tests. The result means nothing."],
+    ["The fix", "sealed gives each team its own room. Everything passes through one trusted go-between, and the raw attack is hidden from the defenders until the test ends."],
+    ["A fresh AI each test", "The AI starts every test with a blank memory, so a secret planted in one test can't leak into the next."],
+    ["A tamper-proof record", "Every action is written down and locked to the one before it — so if anyone edits the record, it's caught."],
+    ["Honest about limits", "It stops the big risks, reduces subtler ones, and says plainly what it can't protect. That honesty is the point."]
+  ];
+  var scenes = Array.prototype.slice.call(document.querySelectorAll('.scene'));
+  var dotsBox = document.getElementById('dots');
+  var i = 0, playing = true, timer = null;
+
+  scenes.forEach(function (_, n) {
+    var d = document.createElement('button');
+    d.className = 'dot2' + (n === 0 ? ' on' : '');
+    d.setAttribute('aria-label', 'Step ' + (n + 1));
+    d.addEventListener('click', function () { go(n); });
+    dotsBox.appendChild(d);
+  });
+
+  function render() {
+    scenes.forEach(function (s, n) { s.classList.toggle('active', n === i); });
+    Array.prototype.forEach.call(dotsBox.children, function (d, n) { d.classList.toggle('on', n === i); });
+    document.getElementById('capK').textContent = CAPS[i][0];
+    document.getElementById('capC').textContent = CAPS[i][1];
+    document.getElementById('count').textContent = (i + 1) + ' / ' + scenes.length;
+  }
+  function go(n) { i = (n + scenes.length) % scenes.length; render(); restart(); }
+  function next() { go(i + 1); }
+  function prev() { go(i - 1); }
+  function restart() { if (playing) { clearInterval(timer); timer = setInterval(next, 6500); } }
+  function setPlay(p) {
+    playing = p;
+    document.getElementById('playIcon').textContent = p ? '❚❚' : '▶';
+    document.getElementById('playTxt').textContent = p ? 'Pause' : 'Play';
+    clearInterval(timer);
+    if (p) timer = setInterval(next, 6500);
+  }
+
+  document.getElementById('next').addEventListener('click', function () { next(); });
+  document.getElementById('prev').addEventListener('click', function () { prev(); });
+  document.getElementById('play').addEventListener('click', function () { setPlay(!playing); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') next();
+    else if (e.key === 'ArrowLeft') prev();
+    else if (e.key === ' ') { e.preventDefault(); setPlay(!playing); }
+  });
+
+  var tb = document.getElementById('themeBtn');
+  tb && tb.addEventListener('click', function () {
+    var cur = document.documentElement.getAttribute('data-theme');
+    var pd = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var nx = cur ? (cur === 'dark' ? 'light' : 'dark') : (pd ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', nx);
+    try { localStorage.setItem('sealed-theme', nx); } catch (e) {}
+  });
+
+  render();
+  setPlay(true);
+</script>
+</body>
+</html>

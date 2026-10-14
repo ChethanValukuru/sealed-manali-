@@ -5,6 +5,8 @@ A zero-build static site: a clean explainer plus a live **console** that connect
 "not connected" state — there are **no fabricated numbers** anywhere.
 
 - `index.html` — overview (problem, architecture, objectives, threat model)
+- `walkthrough.html` — a 1-minute animated explainer (doubles as a presentation:
+  arrow keys to move, space to pause/play, F11 for fullscreen)
 - `console.html` + `app.js` — live console (isolation health, audit log, eval runs)
 - `styles.css` — peaceful sage/stone theme, light + dark
 - `vercel.json` — static hosting with a few safe headers
