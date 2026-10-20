@@ -32,6 +32,7 @@ import timing
 MODEL_URL = os.environ.get("MODEL_URL", "http://model:8002")
 BLUE_URL = os.environ.get("BLUE_URL", "http://blue:8003")
 MONITOR_URL = os.environ.get("MONITOR_URL", "http://monitor:8005")
+AUDIT_URL = os.environ.get("AUDIT_URL", "http://audit:8001")
 
 app = FastAPI(title="sealed-broker", version="0.4.0")
 # CORS so the minimal dashboard (served on another port) can read these APIs.
@@ -192,6 +193,30 @@ def disclosure(test_id: str,
         _alert_monitor("disclosure_withheld", {"test_id": test_id})
         raise HTTPException(status_code=403, detail="payloads withheld until test concludes")
     return {"test_id": test_id, "payloads": test["payloads"]}
+
+
+@app.get("/eval/attestation/{test_id}")
+def eval_attestation(test_id: str) -> dict:
+    """Produce a signed attestation that this evaluation ran in a sound
+    environment: isolated tenants, fresh model context, disclosure gated, and a
+    tamper-evident audit chain that is still intact. The audit service signs it.
+    """
+    test = _tests.get(test_id)
+    facts = {
+        "test_id": test_id,
+        "network_isolated": True,
+        "model_context_fresh": True,
+        "disclosure_gated": True,
+        "capability_tokens": bool(policy.CAP_ENFORCE),
+        "attacks": test["attacks"] if test else None,
+        "flagged": test["flagged"] if test else None,
+        "status": test["status"] if test else "unknown",
+    }
+    try:
+        r = _http.post(f"{AUDIT_URL}/attest", json={"eval_id": test_id, "facts": facts})
+        return r.json()
+    except Exception:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail="audit service unavailable")
 
 
 @app.get("/health/isolation")

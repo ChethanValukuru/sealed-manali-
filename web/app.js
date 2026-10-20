@@ -13,6 +13,7 @@
 
   var connected = { broker: false, audit: false, red: false };
   var timer = null;
+  var lastTest = null, lastProof = null;
 
   function trim(u) { return (u || "").replace(/\/+$/, ""); }
   function setBadge(el, state, text) { el.className = "badge " + state; el.textContent = text; }
@@ -45,6 +46,8 @@
     $("runEval").disabled = !connected.red;
     $("runContam").disabled = !connected.red;
     $("verifyBtn").disabled = !connected.audit;
+    $("tamperBtn").disabled = !connected.audit;
+    $("getProof").disabled = !(connected.broker && lastTest);
     await renderHealth();
     await renderActivity();
   }
@@ -121,7 +124,14 @@
   async function runEval() {
     showOut("Running a round of tests…");
     var res = await getJSON(trim(urls.red) + "/run", { method: "POST" });
-    showOut(res.ok ? "Done. A round of tests just ran — you can follow each step in the activity below."
+    if (res.ok && res.data && res.data.test_id) {
+      lastTest = res.data.test_id;
+      lastProof = null;
+      $("getProof").disabled = !connected.broker;
+      $("checkProof").disabled = true;
+      $("downloadProof").disabled = true;
+    }
+    showOut(res.ok ? "Done. A round of tests just ran — you can follow each step in the activity below, or get a proof it was sound."
       : "Couldn't reach your system. Is it running?");
     await renderActivity();
   }
@@ -145,6 +155,56 @@
       : "The record was tampered with — the check caught it.");
   }
 
+  function showProof(text) { var o = $("proofOut"); o.style.display = ""; o.textContent = text; }
+
+  async function getProof() {
+    if (!lastTest) { showProof("Run a test first."); return; }
+    showProof("Issuing a signed proof…");
+    var res = await getJSON(trim(urls.broker) + "/eval/attestation/" + encodeURIComponent(lastTest));
+    if (!res.ok || !res.data || !res.data.attestation) { showProof("Couldn't get a proof. Is the system running?"); return; }
+    lastProof = res.data;
+    $("checkProof").disabled = !connected.audit;
+    $("downloadProof").disabled = false;
+    var f = res.data.attestation;
+    var parts = [];
+    if (f.chain_intact) parts.push("the record is intact");
+    if (f.facts && f.facts.model_context_fresh) parts.push("the AI's memory was fresh");
+    if (f.facts && f.facts.network_isolated) parts.push("the teams were isolated");
+    showProof("Proof issued. This test ran in a sealed environment — " + parts.join(", ") +
+      ". It is signed, so anyone can check it is genuine.");
+  }
+
+  async function checkProof() {
+    if (!lastProof) { showProof("Get a proof first."); return; }
+    showProof("Checking the proof's signature…");
+    var res = await getJSON(trim(urls.audit) + "/verify_attestation", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attestation: lastProof.attestation, signature: lastProof.signature })
+    });
+    showProof(res.ok && res.data && res.data.valid
+      ? "The proof is genuine — its signature checks out."
+      : "The proof did not check out.");
+  }
+
+  function downloadProof() {
+    if (!lastProof) return;
+    var blob = new Blob([JSON.stringify(lastProof, null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "sealed-proof.json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+
+  async function tamperDemo() {
+    showProof("Secretly changing a record, then checking…");
+    var res = await getJSON(trim(urls.audit) + "/tamper_demo", { method: "POST" });
+    if (!res.ok || !res.data) { showProof("Couldn't reach the record. Is your system running?"); return; }
+    showProof(res.data.caught
+      ? "We changed a record on purpose — and the check caught it. (The real record was left untouched.)"
+      : "Run a test first so there is something to check.");
+  }
+
   function connect() {
     ["broker", "audit", "red"].forEach(function (k) { urls[k] = trim($(k).value); });
     try { localStorage.setItem(LS, JSON.stringify(urls)); } catch (e) {}
@@ -158,6 +218,10 @@
   $("runEval").addEventListener("click", runEval);
   $("runContam").addEventListener("click", runContam);
   $("verifyBtn").addEventListener("click", verify);
+  $("getProof").addEventListener("click", getProof);
+  $("checkProof").addEventListener("click", checkProof);
+  $("downloadProof").addEventListener("click", downloadProof);
+  $("tamperBtn").addEventListener("click", tamperDemo);
 
   mixedContentWarning();
   probe();

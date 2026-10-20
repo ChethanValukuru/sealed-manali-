@@ -30,6 +30,30 @@ Weaknesses · LLM09 Misinformation · LLM10 Unbounded Consumption.
 output-handling defenses. It makes sure your *evaluation* of those defenses is sound,
 isolated, and uncontaminated — and produces a tamper-evident record of it.
 
+## Where sealed fits (vs. existing AI red-teaming tools)
+
+The AI red-teaming space is active — NVIDIA **Garak**, Microsoft **PyRIT**, **Giskard**,
+**Promptfoo**, and commercial platforms like **Mindgard** (whose 2026 roundup compares
+40+ tools). They are all strong at the same thing: *generating* adversarial prompts and
+*scanning* a model for weaknesses.
+
+`sealed` is deliberately **not** another attack generator. It sits one layer underneath:
+it guarantees the **evaluation itself was sound** — the attacker, defender, and model
+stay isolated, the model context is fresh, and the whole run is recorded in a
+tamper-evident log — and it issues a **verifiable attestation** of that.
+
+| | Attack tools (Garak / PyRIT / Giskard / …) | `sealed` |
+|---|---|---|
+| Goal | Find model weaknesses | Make the finding **trustworthy** |
+| Output | A list of vulnerabilities | A **signed proof** the test was sound |
+| Isolation of the test environment | Not their focus | The whole point |
+| Independently verifiable result | Rarely | Yes — anyone can check the attestation |
+
+The two are complementary: run Garak/PyRIT *inside* a sealed environment and your findings
+come with proof they weren't contaminated. That gap — trust in the *test*, not just the
+*attack* — is `sealed`'s wedge. (Landscape surveyed Oct 2026 via `mindgard.ai`,
+`giskard.ai`, and the OWASP Gen AI project.)
+
 ## Standards context
 
 Regulators and frameworks increasingly require **demonstrable, auditable** AI-safety

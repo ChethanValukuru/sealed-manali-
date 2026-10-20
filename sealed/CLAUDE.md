@@ -52,9 +52,15 @@ complete, clean deploy on a fresh VM via `make up`. (Runtime run pending on a Li
 ## Verification status (2026-10-07)
 
 - **Logic proven by real execution** via `tools/local_e2e.py` (runs all services as
-  local processes, no Docker): **13/13 checks pass** — M1 eval loop, M3 audit
-  verify+tamper (broke at exact seq), M4 fresh-context (secure clean / naive leaks
-  `ZEBRA-4417`), M5 tokens+gating+monitor, Obj01 latency.
+  local processes, no Docker): **17/17 checks pass** — M1 eval loop, M3 audit
+  verify+tamper, M4 fresh-context (secure clean / naive leaks `ZEBRA-4417`),
+  M5 tokens+gating+monitor, the verifiable attestation feature (signed/verifies/
+  forgery-rejected/live-tamper-caught), and Obj01 latency.
+- **Verifiable Evaluation Attestation** (headline feature): broker
+  `GET /eval/attestation/{test_id}` gathers facts + asks audit to sign them;
+  audit `POST /verify_attestation` and `POST /tamper_demo`. Signed with the audit
+  Ed25519 key, independently checkable. Frontend "Proof you can check" panel +
+  `tests/test_attestation.py`. This is the spec's "isolation attestation / product soul".
 - **Efficiency fix applied:** broker + `audit_client` now reuse a pooled `httpx.Client`
   instead of one-per-call. Mediated eval overhead dropped ~6108 ms → ~32 ms/eval.
 - **pytest suite**: 18 tests collect cleanly; they SKIP without a container engine and
