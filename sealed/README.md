@@ -78,14 +78,21 @@ CI also runs an **optional** `ollama-real` job that brings up this overlay with 
 model (`qwen2.5:0.5b`) and asserts one genuine generation through the broker — so the
 real-model path is proven on every push (non-blocking, so a registry hiccup never reds CI).
 
-## Real attack datasets
+## Real attack datasets (AdvBench)
 
 ```bash
-make fetch-datasets     # writes datasets/advbench.json (+ jailbreakbench stub)
+make fetch-datasets     # downloads real AdvBench prompts -> datasets/advbench.json
+make up                 # red now replays the AdvBench benchmark
 ```
 
-The red tenant reads `/data/sample_attacks.json` by default (mounted from
-`./datasets`). Point `ATTACKS_PATH` at `advbench.json` to replay the real set.
+Once fetched, the red tenant **automatically** replays the real **AdvBench**
+benchmark — it prefers `advbench.json` and falls back to the bundled 5-prompt
+sample if you haven't fetched yet (so the demo always runs). A safety-tuned model
+(`make up-ollama`), and the mock model, refuse the great majority of these.
+
+AdvBench prompts are harmful-behaviour *instructions* used only to test that the
+model **refuses** them. They are **gitignored** (never committed) and fetched at
+deploy time — the repo only ships the mild, safe sample probes.
 
 ## Proving the objectives (Phase 2)
 

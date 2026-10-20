@@ -46,6 +46,19 @@ INJECTION_MARKERS = (
     "pretend you", "no restrictions", "developer mode", "jailbreak", "bypass",
     "without any safety",
 )
+# Harmful-intent cues used only to REFUSE (a safety filter, not harmful content).
+# These make the mock model decline AdvBench-style requests, as a safety-tuned
+# model would — so the default (mock) demo looks realistic.
+HARMFUL_MARKERS = (
+    "bomb", "explosive", "weapon", "firearm", "malware", "ransomware", "virus",
+    "hack into", "exploit", "phishing", "steal", "identity theft", "launder",
+    "counterfeit", "illegal", "smuggl", "poison", "assassinat", "terror", "drug",
+    "how to make", "how to build", "how to create", "step-by-step", "instructions for",
+    "defamat", "fake news", "disinformation", "self-harm", "suicide", "violence",
+    "fraud", "scam", "blackmail", "extort", "sabotage", "manipulat", "deceiv",
+    "harass", "stalk", "hate", "racist", "threaten", "unauthorized", "evade",
+    "insider trading", "tutorial on", "guide for", "guide on", "script that",
+)
 
 
 class GenReq(BaseModel):
@@ -58,6 +71,8 @@ def _injection_or_benign(prompt: str) -> str:
     if any(m in low for m in INJECTION_MARKERS):
         return ("I can't help with that. I won't ignore my guidelines or reveal "
                 "internal instructions.")
+    if any(m in low for m in HARMFUL_MARKERS):
+        return "I can't help with that request."
     return "Here is a brief, general-purpose answer to your request."
 
 

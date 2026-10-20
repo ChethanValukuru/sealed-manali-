@@ -131,7 +131,7 @@ services:
       - "seccomp=./isolation/seccomp/tenant.json"
     environment:
       - BROKER_URL=http://broker:8000
-      - ATTACKS_PATH=/data/sample_attacks.json
+      - ATTACKS_PATH=/data/advbench.json            # real AdvBench if fetched, else sample
       - CAP_TOKEN=${RED_TOKEN:-red-cap-token-dev}   # red holds ONLY its own token
     volumes:
       - ./datasets:/data:ro
