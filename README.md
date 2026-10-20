@@ -19,6 +19,7 @@ model**. Built for Hack in Hills '26 · Track 04 (Bayora).
 | [`sealed/`](sealed/) | the implementation — start at [`sealed/README.md`](sealed/README.md) |
 | [`web/`](web/) | the frontend — a clean explainer + a live console (deploys on Vercel) |
 | [`sealed/THREAT_MODEL.md`](sealed/THREAT_MODEL.md) | what it protects against, and where it doesn't (Obj 06) |
+| [`sealed/docs/REFERENCES.md`](sealed/docs/REFERENCES.md) | how it maps to the OWASP Top 10 for LLM Applications (2025) |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | runs the whole suite on Ubuntu runners |
 
 ## Quick start
