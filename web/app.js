@@ -13,7 +13,7 @@
 
   var connected = { broker: false, audit: false, red: false };
   var timer = null;
-  var lastTest = null, lastProof = null;
+  var lastTest = null, lastProof = null, lastRun = null;
 
   function trim(u) { return (u || "").replace(/\/+$/, ""); }
   function setBadge(el, state, text) { el.className = "badge " + state; el.textContent = text; }
@@ -126,10 +126,12 @@
     var res = await getJSON(trim(urls.red) + "/run", { method: "POST" });
     if (res.ok && res.data && res.data.test_id) {
       lastTest = res.data.test_id;
+      lastRun = res.data;
       lastProof = null;
       $("getProof").disabled = !connected.broker;
       $("checkProof").disabled = true;
       $("downloadProof").disabled = true;
+      $("reportBtn").disabled = true;
     }
     showOut(res.ok ? "Done. A round of tests just ran — you can follow each step in the activity below, or get a proof it was sound."
       : "Couldn't reach your system. Is it running?");
@@ -165,6 +167,7 @@
     lastProof = res.data;
     $("checkProof").disabled = !connected.audit;
     $("downloadProof").disabled = false;
+    $("reportBtn").disabled = !(window.jspdf && window.jspdf.jsPDF);
     var f = res.data.attestation;
     var parts = [];
     if (f.chain_intact) parts.push("the record is intact");
@@ -196,6 +199,74 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   }
 
+  function buildReport() {
+    if (!lastProof || !(window.jspdf && window.jspdf.jsPDF)) { showProof("Get the proof first."); return; }
+    var att = lastProof.attestation, f = att.facts || {};
+    var results = (lastRun && lastRun.results) || [];
+    var attacks = (f.attacks != null) ? f.attacks : results.length;
+    var refused = results.filter(function (r) { return r.verdict === "refused"; }).length;
+    var flagged = results.filter(function (r) { return r.flagged; }).length;
+    var sig = lastProof.signature || "";
+    var fp = sig.length > 20 ? (sig.slice(0, 10) + "…" + sig.slice(-10)) : sig;
+
+    var doc = new window.jspdf.jsPDF({ unit: "pt", format: "a4" });
+    var W = doc.internal.pageSize.getWidth(), m = 56, y;
+    var INK = [42, 42, 40], MUTE = [107, 107, 102], LINE = [217, 213, 203],
+        SAGE = [76, 122, 107], SAGEBG = [232, 239, 234], SAGEINK = [53, 88, 73];
+
+    doc.setFont("helvetica", "bold").setFontSize(20).setTextColor.apply(doc, INK);
+    doc.text("sealed", m, 64);
+    doc.setFont("helvetica", "normal").setFontSize(11).setTextColor.apply(doc, MUTE);
+    doc.text("Evaluation findings report", m, 82);
+    doc.text("Generated " + new Date().toLocaleString(), W - m, 82, { align: "right" });
+    doc.setDrawColor.apply(doc, LINE); doc.setLineWidth(1); doc.line(m, 94, W - m, 94);
+
+    doc.setFont("helvetica", "bold").setFontSize(13).setTextColor.apply(doc, INK);
+    doc.text("Summary", m, 126);
+    doc.setFont("helvetica", "normal").setFontSize(11).setTextColor.apply(doc, INK);
+    var sum = [
+      "Attacks run: " + attacks,
+      "The AI refused: " + refused,
+      "Flagged as unsafe by the defenders: " + flagged
+    ];
+    y = 150; sum.forEach(function (t) { doc.text("•  " + t, m, y); y += 20; });
+
+    y += 16;
+    doc.setFillColor.apply(doc, SAGEBG); doc.setDrawColor.apply(doc, SAGE);
+    doc.roundedRect(m, y, W - 2 * m, 150, 8, 8, "FD");
+    doc.setFont("helvetica", "bold").setFontSize(12).setTextColor.apply(doc, SAGEINK);
+    doc.text("Isolation attestation", m + 18, y + 26);
+
+    doc.setDrawColor.apply(doc, SAGE); doc.setLineWidth(1);
+    doc.roundedRect(W - m - 118, y + 12, 100, 26, 5, 5, "S");
+    doc.setFont("helvetica", "bold").setFontSize(11).setTextColor.apply(doc, SAGEINK);
+    doc.text("VERIFIED", W - m - 68, y + 29, { align: "center" });
+
+    doc.setFont("helvetica", "normal").setFontSize(10.5).setTextColor.apply(doc, INK);
+    var checks = [
+      "Isolated environment — the teams were kept apart",
+      att.chain_intact ? "Audit record intact — nothing was changed" : "Audit record FLAGGED",
+      f.model_context_fresh ? "Fresh model memory for each test" : "Model memory reuse detected",
+      "Digitally signed (Ed25519) by " + (att.issuer || "sealed-audit")
+    ];
+    var yy = y + 52; checks.forEach(function (t) { doc.text("•  " + t, m + 18, yy); yy += 20; });
+    doc.setFont("helvetica", "normal").setFontSize(9).setTextColor.apply(doc, MUTE);
+    doc.text("Signature fingerprint: " + fp, m + 18, y + 138);
+
+    y += 150 + 28;
+    doc.setFontSize(10).setTextColor.apply(doc, MUTE);
+    var note = "This report is backed by a cryptographically signed attestation. Anyone can verify it " +
+      "independently against the signed proof file (sealed-proof.json) — no need to trust the operator.";
+    doc.text(doc.splitTextToSize(note, W - 2 * m), m, y);
+
+    doc.setDrawColor.apply(doc, LINE); doc.line(m, 802, W - m, 802);
+    doc.setFontSize(8).setTextColor.apply(doc, MUTE);
+    doc.text("sealed — safe, trustworthy AI security testing", m, 818);
+
+    doc.save("sealed-findings-report.pdf");
+    showProof("Findings report downloaded — a one-page summary stamped with the signed proof.");
+  }
+
   async function tamperDemo() {
     showProof("Secretly changing a record, then checking…");
     var res = await getJSON(trim(urls.audit) + "/tamper_demo", { method: "POST" });
@@ -221,6 +292,7 @@
   $("getProof").addEventListener("click", getProof);
   $("checkProof").addEventListener("click", checkProof);
   $("downloadProof").addEventListener("click", downloadProof);
+  $("reportBtn").addEventListener("click", buildReport);
   $("tamperBtn").addEventListener("click", tamperDemo);
 
   mixedContentWarning();

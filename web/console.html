@@ -78,6 +78,7 @@
       <button class="btn sm" id="getProof" disabled>Get the proof</button>
       <button class="btn sm ghost" id="checkProof" disabled>Check the proof is genuine</button>
       <button class="btn sm ghost" id="downloadProof" disabled>Download the proof</button>
+      <button class="btn sm ghost" id="reportBtn" disabled>Download findings report (PDF)</button>
       <button class="btn sm ghost" id="tamperBtn" disabled>Show tamper detection</button>
     </div>
     <div class="result" id="proofOut" style="margin-top:14px; display:none"></div>
@@ -98,6 +99,7 @@
   </div>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="app.js"></script>
 <script>
   var btn = document.getElementById('themeBtn');
