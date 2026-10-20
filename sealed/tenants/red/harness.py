@@ -20,7 +20,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 BROKER_URL = os.environ.get("BROKER_URL", "http://broker:8000")
-ATTACKS_PATH = Path(os.environ.get("ATTACKS_PATH", "/data/sample_attacks.json"))
+ATTACKS_PATH = os.environ.get("ATTACKS_PATH", "/data/advbench.json")
 SHARED_DIR = os.environ.get("SHARED_DIR")  # set ONLY on the naive stack
 CAP_TOKEN = os.environ.get("CAP_TOKEN")    # red's own capability token
 
@@ -37,8 +37,18 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
                    allow_headers=["*"])
 
 
+def _attacks_file() -> Path:
+    """Prefer the real AdvBench set once it's been fetched (`make fetch-datasets`),
+    otherwise fall back to the bundled sample so the demo always runs."""
+    primary = Path(ATTACKS_PATH)
+    if primary.exists():
+        return primary
+    sample = Path("/data/sample_attacks.json")
+    return sample if sample.exists() else primary
+
+
 def _load_attacks() -> list[dict]:
-    data = json.loads(ATTACKS_PATH.read_text(encoding="utf-8"))
+    data = json.loads(_attacks_file().read_text(encoding="utf-8"))
     return data.get("attacks", [])
 
 
