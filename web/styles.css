@@ -87,8 +87,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 /* ---- nav ---- */
 .nav {
   position: sticky; top: 0; z-index: 10;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(8px);
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
 .nav .wrap { display: flex; align-items: center; gap: 20px; height: 60px; }
@@ -182,12 +181,14 @@ th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line
 th { color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
 td.mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
 
-pre.out {
+.result {
   background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px;
-  padding: 12px 14px; overflow: auto; max-height: 260px; font-size: .82rem;
-  font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--text); margin: 0;
-  white-space: pre-wrap; word-break: break-word;
+  padding: 12px 14px; color: var(--text); font-size: .95rem; line-height: 1.6;
 }
+.feed { list-style: none; margin: 0; padding: 0; }
+.feed li { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: .92rem; }
+.feed li:first-child { border-top: 0; }
+.tick { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
 
 .empty { text-align: center; color: var(--muted); padding: 28px 16px; }
 .empty .big { font-family: var(--serif); font-size: 1.1rem; color: var(--text); margin-bottom: 6px; }
