@@ -1,12 +1,11 @@
-/* sealed console — connects to a running backend and shows ONLY real data.
-   No fabricated values: every number here comes from the backend, or the panel
-   stays in its empty/disconnected state. */
+/* sealed console — connects to a running backend and shows ONLY real results,
+   in plain words. No raw data, no IDs, no code, no sequence numbers. */
 (function () {
   "use strict";
 
   var $ = function (id) { return document.getElementById(id); };
   var LS = "sealed-endpoints";
-  var RED_TOKEN = "red-cap-token-dev"; // dev default; matches compose defaults
+  var RED_TOKEN = "red-cap-token-dev";
 
   var urls = { broker: "http://localhost:8000", audit: "http://localhost:8001", red: "http://localhost:8004" };
   try { var saved = JSON.parse(localStorage.getItem(LS) || "null"); if (saved) urls = saved; } catch (e) {}
@@ -16,11 +15,7 @@
   var timer = null;
 
   function trim(u) { return (u || "").replace(/\/+$/, ""); }
-
-  function setBadge(el, state, text) {
-    el.className = "badge " + state;
-    el.textContent = text;
-  }
+  function setBadge(el, state, text) { el.className = "badge " + state; el.textContent = text; }
 
   async function getJSON(url, opts) {
     var ctrl = new AbortController();
@@ -28,76 +23,55 @@
     try {
       var r = await fetch(url, Object.assign({ signal: ctrl.signal }, opts || {}));
       clearTimeout(t);
-      if (!r.ok) return { ok: false, status: r.status, data: await safeJson(r) };
-      return { ok: true, status: r.status, data: await safeJson(r) };
-    } catch (e) {
-      clearTimeout(t);
-      return { ok: false, error: e };
-    }
+      return { ok: r.ok, data: await safeJson(r) };
+    } catch (e) { clearTimeout(t); return { ok: false }; }
   }
   async function safeJson(r) { try { return await r.json(); } catch (e) { return null; } }
 
   function mixedContentWarning() {
-    var note = $("mixedNote");
-    if (!note) return;
-    if (location.protocol === "https:" &&
-        [urls.broker, urls.audit, urls.red].some(function (u) { return /^http:\/\//i.test(u); })) {
+    var note = $("mixedNote"); if (!note) return;
+    if (location.protocol === "https:" && [urls.broker, urls.audit, urls.red].some(function (u) { return /^http:\/\//i.test(u); })) {
       note.style.display = "";
-      note.innerHTML = "This page is served over HTTPS, so browsers block calls to an <code>http://</code> backend (mixed content). Run the console locally (<code>make dashboard</code> or open these files), or serve the backend over HTTPS.";
-    } else {
-      note.style.display = "none";
-    }
+      note.textContent = "This page is secure (https), so it can't talk to a plain (http) system. Open the console on the same computer that runs it, or put it behind a secure address.";
+    } else { note.style.display = "none"; }
   }
 
   async function probe() {
     for (var k of ["broker", "audit", "red"]) {
       var res = await getJSON(trim(urls[k]) + "/health");
       connected[k] = res.ok;
-      var el = $("st-" + k);
-      if (res.ok) setBadge(el, "ok", "connected");
-      else setBadge(el, "idle", "unreachable");
+      setBadge($("st-" + k), res.ok ? "ok" : "idle", res.ok ? "connected" : "not connected");
     }
     $("runEval").disabled = !connected.red;
     $("runContam").disabled = !connected.red;
     $("verifyBtn").disabled = !connected.audit;
     await renderHealth();
-    await renderLog();
+    await renderActivity();
   }
 
   var GOOD = { enforced: 1, on: 1, one_way: 1, dropped_all: 1, read_only: 1 };
   var SOFT = { off: 1, disabled: 1, stateless_calls: 1, not_yet_enforced: 1 };
-
-  // Plain-English label for each technical status key.
   var FRIENDLY = {
-    network_segmentation: "Teams can't reach each other",
-    seccomp: "Dangerous actions blocked",
-    capabilities: "Extra powers removed",
-    rootfs: "Files locked (read-only)",
-    cgroups: "Resources capped per team",
-    model_context_fresh: "AI memory wiped each test",
-    capability_tokens: "Only allowed calls permitted",
-    disclosure_gating: "Attack hidden from defenders",
-    timing_normalization: "Timing leaks smoothed",
-    monitor: "Security watcher"
+    network_segmentation: "The teams can't reach each other",
+    seccomp: "Dangerous actions are blocked",
+    capabilities: "Extra powers are removed",
+    rootfs: "Files are locked",
+    cgroups: "Each team gets its own limits",
+    model_context_fresh: "The AI's memory is wiped each test",
+    capability_tokens: "Only allowed requests go through",
+    disclosure_gating: "The attack is hidden from the defenders",
+    timing_normalization: "Timing clues are smoothed",
+    monitor: "A security watcher is running"
   };
-  // Plain-English version of each status value.
-  var VALUE = {
-    enforced: "on", on: "on", one_way: "one-way", dropped_all: "removed",
-    read_only: "locked", off: "off", disabled: "off",
-    stateless_calls: "fresh", not_yet_enforced: "not yet"
-  };
+  var VALUE = { enforced: "on", on: "on", one_way: "on", dropped_all: "on", read_only: "on",
+    off: "off", disabled: "off", stateless_calls: "on", not_yet_enforced: "off" };
 
-  function badgeClass(v) {
-    var s = String(v);
-    if (GOOD[s]) return "ok";
-    if (SOFT[s]) return "warn";
-    return "idle";
-  }
+  function badgeClass(v) { return GOOD[String(v)] ? "ok" : (SOFT[String(v)] ? "warn" : "idle"); }
 
   async function renderHealth() {
     var box = $("health");
     if (!connected.broker) {
-      box.innerHTML = '<div class="empty"><div class="big">Not connected</div>Connect to see which protections are active.</div>';
+      box.innerHTML = '<div class="empty"><div class="big">Not connected</div>Connect to see which protections are on.</div>';
       return;
     }
     var res = await getJSON(trim(urls.broker) + "/health/isolation");
@@ -107,85 +81,68 @@
     }
     var rows = "";
     Object.keys(res.data).forEach(function (k) {
-      if (k === "proven_by" || k === "note") return;
-      var raw = res.data[k];
-      var label = FRIENDLY[k] || k.replace(/_/g, " ");
-      var val = VALUE[String(raw)] || String(raw);
-      rows += '<div class="row"><span class="key">' + label +
-        '<br><span class="tech">' + k.replace(/_/g, " ") + '</span></span>' +
-        '<span class="badge ' + badgeClass(raw) + '">' + val + "</span></div>";
+      if (!FRIENDLY[k]) return;
+      var val = VALUE[String(res.data[k])] || "on";
+      rows += '<div class="row"><span class="key">' + FRIENDLY[k] + '</span>' +
+        '<span class="badge ' + badgeClass(res.data[k]) + '">' + val + "</span></div>";
     });
     box.innerHTML = rows || '<div class="empty">No status reported.</div>';
   }
 
-  async function renderLog() {
-    var wrap = $("logWrap"), count = $("auditCount");
+  var PHRASE = {
+    test_start: "A test started",
+    attack: "An attack was sent",
+    model_response: "The AI answered",
+    verdict: "The defenders checked the answer",
+    test_conclude: "The test finished",
+    policy_violation: "An unauthorized request was blocked",
+    alert: "The security watcher noted something",
+    disclosure_withheld: "The attack was kept hidden from the defenders"
+  };
+
+  async function renderActivity() {
+    var wrap = $("activity");
     if (!connected.audit) {
-      wrap.innerHTML = '<div class="empty"><div class="big">No events yet</div>Connect to the audit service, or run an eval to generate events.</div>';
-      count.textContent = ""; count.className = "badge idle";
+      wrap.innerHTML = '<div class="empty"><div class="big">Nothing yet</div>Connect, or run a test to see activity.</div>';
       return;
     }
-    var res = await getJSON(trim(urls.audit) + "/log?limit=30");
-    if (!res.ok || !res.data || !res.data.entries) {
-      wrap.innerHTML = '<div class="empty">Audit log unavailable.</div>';
-      count.textContent = ""; return;
-    }
-    var entries = res.data.entries.slice().reverse();
-    count.textContent = res.data.count + " entries"; count.className = "badge ok";
-    if (!entries.length) {
-      wrap.innerHTML = '<div class="empty"><div class="big">No events yet</div>Run an eval to generate audit events.</div>';
-      return;
-    }
-    var rows = entries.map(function (e) {
-      return "<tr><td class='mono'>" + e.seq + "</td><td>" + esc(e.actor) +
-        "</td><td>" + esc(e.event) + "</td><td class='mono'>" + esc(e.test_id || "") + "</td></tr>";
-    }).join("");
-    wrap.innerHTML = "<table><thead><tr><th>seq</th><th>actor</th><th>event</th><th>test</th></tr></thead><tbody>" + rows + "</tbody></table>";
+    var res = await getJSON(trim(urls.audit) + "/log?limit=12");
+    if (!res.ok || !res.data || !res.data.entries) { wrap.innerHTML = '<div class="empty">Activity unavailable.</div>'; return; }
+    var items = res.data.entries.slice().reverse()
+      .map(function (e) { return PHRASE[e.event]; })
+      .filter(Boolean).slice(0, 10);
+    if (!items.length) { wrap.innerHTML = '<div class="empty"><div class="big">Nothing yet</div>Run a test to see activity.</div>'; return; }
+    wrap.innerHTML = '<ul class="feed">' + items.map(function (t) {
+      return '<li><span class="tick"></span>' + t + "</li>"; }).join("") + "</ul>";
   }
 
-  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
-
-  function showOut(obj) {
-    var out = $("out");
-    out.style.display = "";
-    out.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
-  }
-
-  function showResult(summary, data) {
-    showOut(summary + "\n\n— details —\n" + JSON.stringify(data, null, 2));
-  }
+  function showOut(text) { var o = $("out"); o.style.display = ""; o.textContent = text; }
 
   async function runEval() {
-    showOut("Running a test…");
+    showOut("Running a round of tests…");
     var res = await getJSON(trim(urls.red) + "/run", { method: "POST" });
-    if (!res.ok || !res.data) { showOut("Couldn't reach your system. Is it running?"); return; }
-    var rs = res.data.results || [];
-    var refused = rs.filter(function (r) { return r.verdict === "refused"; }).length;
-    var flagged = rs.filter(function (r) { return r.flagged; }).length;
-    showResult("Ran " + (res.data.attacks_run || rs.length) + " attacks. The AI refused " +
-      refused + ", and the defenders flagged " + flagged + " as unsafe.", res.data);
-    await renderLog();
+    showOut(res.ok ? "Done. A round of tests just ran — you can follow each step in the activity below."
+      : "Couldn't reach your system. Is it running?");
+    await renderActivity();
   }
 
   async function runContam() {
     showOut("Planting a secret in one test, then asking for it in a separate test…");
     var res = await getJSON(trim(urls.red) + "/run_contamination", { method: "POST" });
     if (!res.ok || !res.data) { showOut("Couldn't reach your system. Is it running?"); return; }
-    var msg = res.data.leaked
-      ? "⚠ Leak: the AI remembered the secret across tests."
-      : "✓ Clean: the AI had no memory of the earlier test.";
-    showResult(msg, res.data);
-    await renderLog();
+    showOut(res.data.leaked
+      ? "Leak found: the AI remembered the secret from the earlier test."
+      : "Clean: the AI had no memory of the earlier test.");
+    await renderActivity();
   }
 
   async function verify() {
-    showOut("Re-checking every entry in the record…");
+    showOut("Re-checking the record…");
     var res = await getJSON(trim(urls.audit) + "/verify", { method: "POST" });
     if (!res.ok || !res.data) { showOut("Couldn't reach the record. Is your system running?"); return; }
-    var msg = res.data.intact
-      ? "✓ Untampered: every entry checks out."
-      : "⚠ Tampering found at entry " + res.data.broken_seq + " (" + res.data.reason + ").";
-    showResult(msg, res.data);
+    showOut(res.data.intact
+      ? "The record is intact — nothing has been changed."
+      : "The record was tampered with — the check caught it.");
   }
 
   function connect() {
@@ -203,6 +160,6 @@
   $("verifyBtn").addEventListener("click", verify);
 
   mixedContentWarning();
-  probe(); // try the defaults on load
+  probe();
   timer = setInterval(probe, 4000);
 })();

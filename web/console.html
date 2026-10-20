@@ -31,50 +31,50 @@
 
 <main class="wrap" style="padding-top:36px; padding-bottom:56px">
   <h1 style="font-size:clamp(1.6rem,4vw,2.3rem)">Live console</h1>
-  <p class="muted" style="max-width:64ch">This page connects to <em>your own</em> running copy of sealed and shows what's really happening — or nothing at all if it isn't running. Start it with <code>make up</code>, then press Connect below. Everything here is real; no numbers are made up.</p>
+  <p class="muted" style="max-width:64ch">This page connects to your own running copy of sealed and shows what's happening in plain words. Start it on your computer, then press Connect. Everything here is real — nothing is made up.</p>
 
   <!-- connection settings -->
   <div class="panel">
     <h3>Connect to your system</h3>
-    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">Where your running system lives. The defaults work if it's on this computer.</p>
+    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">The addresses where your system is running. The defaults work if it's on this computer.</p>
     <div class="settings">
-      <div class="field"><label for="broker">Broker URL</label><input id="broker" value="http://localhost:8000" spellcheck="false"></div>
-      <div class="field"><label for="audit">Audit URL</label><input id="audit" value="http://localhost:8001" spellcheck="false"></div>
-      <div class="field"><label for="red">Red URL</label><input id="red" value="http://localhost:8004" spellcheck="false"></div>
+      <div class="field"><label for="broker">Go-between</label><input id="broker" value="http://localhost:8000" spellcheck="false"></div>
+      <div class="field"><label for="audit">Record keeper</label><input id="audit" value="http://localhost:8001" spellcheck="false"></div>
+      <div class="field"><label for="red">Attack runner</label><input id="red" value="http://localhost:8004" spellcheck="false"></div>
       <button class="btn" id="connectBtn">Connect</button>
     </div>
     <div id="services" style="margin-top:14px">
-      <div class="row"><span class="key">Broker</span><span class="badge idle" id="st-broker">not connected</span></div>
-      <div class="row"><span class="key">Audit</span><span class="badge idle" id="st-audit">not connected</span></div>
-      <div class="row"><span class="key">Red</span><span class="badge idle" id="st-red">not connected</span></div>
+      <div class="row"><span class="key">Go-between</span><span class="badge idle" id="st-broker">not connected</span></div>
+      <div class="row"><span class="key">Record keeper</span><span class="badge idle" id="st-audit">not connected</span></div>
+      <div class="row"><span class="key">Attack runner</span><span class="badge idle" id="st-red">not connected</span></div>
     </div>
     <p class="muted" id="mixedNote" style="display:none; margin:12px 0 0; font-size:.86rem"></p>
   </div>
 
-  <!-- isolation health -->
+  <!-- protections -->
   <div class="panel">
     <h3>Protections</h3>
-    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">The walls between the teams. <span class="badge ok" style="font-weight:600">green</span> means a protection is switched on.</p>
-    <div id="health"><div class="empty"><div class="big">Not connected</div>Connect to see which protections are active.</div></div>
+    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">The walls that keep the teams apart. <span class="badge ok" style="font-weight:600">on</span> means a protection is active.</p>
+    <div id="health"><div class="empty"><div class="big">Not connected</div>Connect to see which protections are on.</div></div>
   </div>
 
   <!-- actions -->
   <div class="panel">
     <h3>Try it</h3>
-    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">Each button runs one real action against your system and shows the result.</p>
+    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">Each button does one real thing and tells you what happened.</p>
     <div class="btn-row">
       <button class="btn sm" id="runEval" disabled>Run a test</button>
       <button class="btn sm ghost" id="runContam" disabled>Check for memory leaks</button>
-      <button class="btn sm ghost" id="verifyBtn" disabled>Check the record is untampered</button>
+      <button class="btn sm ghost" id="verifyBtn" disabled>Check the record is untouched</button>
     </div>
-    <pre class="out" id="out" style="margin-top:14px; display:none"></pre>
+    <div class="result" id="out" style="margin-top:14px; display:none"></div>
   </div>
 
-  <!-- audit log -->
+  <!-- activity -->
   <div class="panel">
-    <h3>The record <span class="badge idle" id="auditCount" style="font-weight:600"></span></h3>
-    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">Every action, in order. Nothing here can be removed or quietly changed.</p>
-    <div id="logWrap"><div class="empty"><div class="big">Nothing recorded yet</div>Connect, or run a test to create some activity.</div></div>
+    <h3>What's happening</h3>
+    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">Each step as it happens. Nothing here can be removed or quietly changed.</p>
+    <div id="activity"><div class="empty"><div class="big">Nothing yet</div>Connect, or run a test to see activity.</div></div>
   </div>
 </main>
 

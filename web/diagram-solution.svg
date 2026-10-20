@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="360" viewBox="0 0 680 360" role="img" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <title>The solution: a broker keeps the three apart and records everything</title>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="680" height="360" fill="#f6f5f1"/>
+
+  <rect x="40" y="56" width="150" height="56" rx="8" fill="#ffffff" stroke="#d9d5cb"/>
+  <text x="115" y="80" font-size="14" font-weight="600" fill="#22272b" text-anchor="middle">Attackers</text>
+  <text x="115" y="98" font-size="12" fill="#5e666d" text-anchor="middle">send the attack</text>
+
+  <rect x="40" y="248" width="150" height="56" rx="8" fill="#ffffff" stroke="#d9d5cb"/>
+  <text x="115" y="272" font-size="14" font-weight="600" fill="#22272b" text-anchor="middle">The AI</text>
+  <text x="115" y="290" font-size="12" fill="#5e666d" text-anchor="middle">fresh memory each test</text>
+
+  <rect x="280" y="146" width="120" height="68" rx="8" fill="#e8efea" stroke="#4c7a6b"/>
+  <text x="340" y="174" font-size="14" font-weight="600" fill="#355849" text-anchor="middle">Broker</text>
+  <text x="340" y="192" font-size="12" fill="#4c7a6b" text-anchor="middle">trusted go-between</text>
+
+  <rect x="490" y="248" width="150" height="56" rx="8" fill="#ffffff" stroke="#d9d5cb"/>
+  <text x="565" y="272" font-size="14" font-weight="600" fill="#22272b" text-anchor="middle">Defenders</text>
+  <text x="565" y="290" font-size="12" fill="#5e666d" text-anchor="middle">check the answer</text>
+
+  <rect x="490" y="56" width="150" height="56" rx="8" fill="#eef3ea" stroke="#5b8f6f"/>
+  <text x="565" y="80" font-size="14" font-weight="600" fill="#2f5d44" text-anchor="middle">The record</text>
+  <text x="565" y="98" font-size="12" fill="#5b8f6f" text-anchor="middle">tamper-proof</text>
+
+  <line x1="190" y1="100" x2="278" y2="156" stroke="#a9a59a" stroke-width="1.6" marker-end="url(#ar)"/>
+  <line x1="190" y1="260" x2="278" y2="204" stroke="#a9a59a" stroke-width="1.6" marker-end="url(#ar)"/>
+  <line x1="402" y1="204" x2="490" y2="260" stroke="#a9a59a" stroke-width="1.6" marker-end="url(#ar)"/>
+  <line x1="402" y1="156" x2="490" y2="100" stroke="#a9a59a" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <text x="212" y="150" font-size="12" fill="#5e666d" text-anchor="middle">attack</text>
+  <text x="470" y="150" font-size="12" fill="#5e666d" text-anchor="middle">answer only</text>
+  <text x="340" y="338" font-size="13" fill="#5e666d" text-anchor="middle">no team can reach another — and every step is recorded</text>
+</svg>
