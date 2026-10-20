@@ -7,7 +7,10 @@ A zero-build static site: a clean explainer plus a live **console** that connect
 - `index.html` — overview (problem, architecture, objectives, threat model)
 - `walkthrough.html` — a 1-minute animated explainer (doubles as a presentation:
   arrow keys to move, space to pause/play, F11 for fullscreen)
-- `console.html` + `app.js` — live console (isolation health, audit log, eval runs)
+- `console.html` + `app.js` — live console (protections, activity, eval runs) plus
+  a **"Proof you can check"** panel: get a signed attestation, verify it, download it,
+  run a live tamper-detection demo, and export a one-page **findings report (PDF)**
+  stamped with the attestation (generated in-browser via jsPDF)
 - `styles.css` — peaceful sage/stone theme, light + dark
 - `vercel.json` — static hosting with a few safe headers
 
