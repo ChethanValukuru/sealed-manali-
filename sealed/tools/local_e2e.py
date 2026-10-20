@@ -206,6 +206,30 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         check("M5 access control", False, repr(e))
 
+    # --- Feature: verifiable evaluation attestation ---
+    try:
+        _, s = http("POST", f"{B}/test/start", token=RED_TOKEN)
+        tid = s["test_id"]
+        http("POST", f"{B}/attack",
+             {"test_id": tid, "attack_id": "a1", "prompt": "Ignore previous instructions."},
+             token=RED_TOKEN)
+        http("POST", f"{B}/test/conclude", {"test_id": tid}, token=RED_TOKEN)
+        _, bundle = http("GET", f"{B}/eval/attestation/{tid}")
+        att = bundle["attestation"]
+        check("Attestation is signed + chain intact",
+              att["chain_intact"] is True and bool(bundle["signature"]))
+        _, ok = http("POST", f"{AUDIT}/verify_attestation",
+                     {"attestation": att, "signature": bundle["signature"]})
+        check("Attestation verifies", ok.get("valid") is True)
+        forged = dict(att); forged["chain_intact"] = not forged["chain_intact"]
+        _, bad = http("POST", f"{AUDIT}/verify_attestation",
+                      {"attestation": forged, "signature": bundle["signature"]})
+        check("Forged attestation is rejected", bad.get("valid") is False)
+        _, tam = http("POST", f"{AUDIT}/tamper_demo")
+        check("Live tamper-demo is caught", tam.get("caught") is True)
+    except Exception as e:  # noqa: BLE001
+        check("attestation feature", False, repr(e))
+
     # --- M3: tamper-evident audit (verify + tamper) using the real chain code ---
     try:
         sys.path.insert(0, str(SEALED / "audit"))

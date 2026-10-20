@@ -109,3 +109,62 @@ def verify(path: str | None = None) -> dict:
     target = Path(path) if path else LOG_PATH
     entries = _read_entries(target)
     return chain.verify_chain(entries, _pub)
+
+
+class AttestReq(BaseModel):
+    eval_id: str
+    facts: dict = {}
+
+
+@app.post("/attest")
+def attest(req: AttestReq) -> dict:
+    """Issue a signed attestation that an evaluation ran in a sound environment.
+
+    The attestation bundles the broker-reported facts with a fresh check that the
+    audit chain is intact, then Ed25519-signs the whole thing. Anyone with the
+    public key can verify it later (via /verify_attestation) — turning "trust us"
+    into "verify us".
+    """
+    entries = _read_entries(LOG_PATH)
+    chk = chain.verify_chain(entries, _pub)
+    attestation = {
+        "eval_id": req.eval_id,
+        "facts": req.facts,
+        "chain_intact": bool(chk.get("intact")),
+        "entries_recorded": len(entries),
+        "issuer": "sealed-audit",
+        "issued_at": time.time(),
+    }
+    digest = chain.sha256_hex(chain.canonical(attestation))
+    signature = chain.sign(_priv, digest)
+    append(AppendReq(test_id=req.eval_id, actor="audit", event="attestation_issued",
+                     payload={"chain_intact": attestation["chain_intact"]}))
+    pub_pem = (KEYS_DIR / "ed25519_public.pem").read_text(encoding="utf-8")
+    return {"attestation": attestation, "signature": signature, "public_key_pem": pub_pem}
+
+
+class VerifyAttReq(BaseModel):
+    attestation: dict
+    signature: str
+
+
+@app.post("/verify_attestation")
+def verify_attestation(req: VerifyAttReq) -> dict:
+    """Re-check an attestation's signature against the audit public key."""
+    digest = chain.sha256_hex(chain.canonical(req.attestation))
+    return {"valid": chain.verify_sig(_pub, digest, req.signature)}
+
+
+@app.post("/tamper_demo")
+def tamper_demo() -> dict:
+    """Prove tamper-evidence live: copy the log, silently edit one entry, and
+    show the verifier catches it. The real log is untouched."""
+    entries = _read_entries(LOG_PATH)
+    if not entries:
+        return {"caught": False, "reason": "no entries yet — run a test first"}
+    victim = len(entries) // 2
+    edited = [dict(e) for e in entries]
+    edited[victim] = dict(edited[victim])
+    edited[victim]["payload"] = {**edited[victim].get("payload", {}), "_tampered": "x"}
+    result = chain.verify_chain(edited, _pub)
+    return {"caught": not result.get("intact"), "reason": result.get("reason", "")}
