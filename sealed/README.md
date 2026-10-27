@@ -119,8 +119,9 @@ python tools/local_e2e.py
 
 This launches every service as a local process over 127.0.0.1 and checks the
 real eval loop, fresh-context vs naive contamination, capability tokens, disclosure
-gating, the one-way monitor, and the tamper-evident audit chain — **13/13 passing**,
-with a measured mediated-eval overhead of ~30 ms. It does **not** cover the
+gating, the one-way monitor, the tamper-evident audit chain, the signed attestation,
+and the audit write-hardening — **19/19 passing**, with a measured mediated-eval
+overhead of ~30 ms. It does **not** cover the
 container-isolation asserts (network/seccomp/rootfs/caps/namespaces) or
 deployability — those need the Linux container run via `make test`.
 

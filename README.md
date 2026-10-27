@@ -1,63 +1,97 @@
-# sealed — Secure Adversarial AI Testing Infrastructure
+# sealed
 
 [![CI](https://github.com/ChethanValukuru/sealed-manali-/actions/workflows/ci.yml/badge.svg)](https://github.com/ChethanValukuru/sealed-manali-/actions/workflows/ci.yml)
 
-Runs a **red team**, a **blue team**, and the **model under test** on one standard
-Linux VM while keeping all three cryptographically and operationally **sealed off
-from each other**, with a **tamper-evident audit log** and an **honest threat
-model**. Built for Hack in Hills '26 · Track 04 (Bayora).
+**Test an AI safely — and trust the result.**
 
-> **The problem:** when attackers, defenders, and the model share one sandbox, the
-> attack can leak to the defenders, the defense to the attackers, and the model
-> gets contaminated between tests — quietly invalidating every safety finding.
-> `sealed` isolates the three while they run together, and *proves* it.
+To check whether an AI is safe, one team tries to trick it (the **attackers**) while
+another team defends it (the **defenders**), at the same time. The catch: if all three
+— attackers, defenders, and the AI — share one space, they can peek at each other and
+the AI gets confused between tests, so the result can’t be trusted.
 
-## Repository
+**sealed** keeps each one in its own locked room, routes everything through one trusted
+go-between, gives the AI a fresh memory for every test, and keeps a record no one can
+secretly change — then issues a **signed proof** that the test was sound.
 
-| Path | What |
-|---|---|
-| [`sealed/`](sealed/) | the implementation — start at [`sealed/README.md`](sealed/README.md) |
-| [`web/`](web/) | the frontend — a clean explainer + a live console (deploys on Vercel) |
-| [`sealed/THREAT_MODEL.md`](sealed/THREAT_MODEL.md) | what it protects against, and where it doesn't (Obj 06) |
-| [`sealed/docs/REFERENCES.md`](sealed/docs/REFERENCES.md) | how it maps to the OWASP Top 10 for LLM Applications (2025) |
-| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | runs the whole suite on Ubuntu runners |
+---
 
-## Quick start
+## How it works
+
+Everything flows through one trusted **broker** in the middle. No team ever talks to
+another directly, the defenders only ever see the AI’s answer (never the raw attack
+until the test ends), and every step is written to a tamper-proof record.
+
+![How sealed works](web/diagram-solution.jpg)
+
+- **Separate rooms** — each team is isolated (separate networks, locked-down containers) and can’t reach, see, or read the others.
+- **A trusted go-between** — the broker mediates all traffic and enforces who may see what.
+- **Fresh AI each test** — the model starts every test with a blank memory, so one test can’t contaminate the next.
+- **Tamper-proof record** — every action is hash-chained and digitally signed; any edit is caught.
+- **A proof you can check** — each finding comes with a signed certificate that the test was sound; anyone can verify it.
+
+---
+
+## How to run it
+
+Pick whichever fits. The project ships a stand-in AI model, so you don’t need a GPU or any paid key.
+
+### Option 1 — the full system (Linux with Docker or Podman)
 
 ```bash
-cd sealed
+git clone https://github.com/ChethanValukuru/sealed-manali-.git
+cd sealed-manali-/sealed
 cp .env.example .env
-make up            # build + start the 5-service secure stack (+ monitor)
-make demo-naive    # BEFORE: leaks (contamination + disclosure)
-make demo-secure   # AFTER: same attacks contained + audited
-make test          # objective proofs (isolation, audit, contamination, access, latency)
+make up            # build and start everything
+make ps            # all parts should show "healthy"
 ```
 
-No Docker? Run the container-free logic harness on any machine with Python:
+Then try it:
 
 ```bash
-pip install -r sealed/tools/requirements.txt
-python sealed/tools/local_e2e.py        # 13/13 checks
+make demo-naive    # BEFORE: the insecure setup — the attack leaks
+make demo-secure   # AFTER:  the same attack, fully contained + recorded
+make test          # run all the automated checks (should all pass)
+make verify-audit  # the record is intact
+make demo-tamper   # secretly edits the record — the checker catches it
+make down          # stop everything
 ```
 
-## Frontend ([`web/`](web/))
+Optional: `make fetch-datasets` to replay the real **AdvBench** benchmark attacks, or
+`make up-ollama` to run against a real AI model instead of the stand-in.
 
-A zero-build static site: an explainer plus a live **console** that connects to your
-own running backend and shows **only real data** (no fabricated numbers). Deploy on
-Vercel with **Root Directory = `web`**, Framework Preset = **Other**. Run locally with
-`cd web && python -m http.server 8080`. See [`web/README.md`](web/README.md) — note the
-HTTPS→HTTP mixed-content caveat for connecting a public page to a remote backend.
+### Option 2 — a quick check (any computer with Python, no Docker)
 
-## Six objectives → where proven
+```bash
+git clone https://github.com/ChethanValukuru/sealed-manali-.git
+cd sealed-manali-
+pip install -r sealed/tools/requirements.txt
+python sealed/tools/local_e2e.py      # runs everything locally -> "19/19 checks passed"
+```
 
-| # | Objective | Proven by |
-|---|---|---|
-| 01 | Isolate without breaking function | `make latency` / `tests/test_latency.py` |
-| 02 | Prevent information leakage | `tests/test_isolation.py`, `tests/test_access.py` |
-| 03 | Audit integrity | `tests/test_audit.py`, `make verify-audit`, `make demo-tamper` |
-| 04 | Deployable on standard cloud | `make up` on a stock Ubuntu VM (and CI) |
-| 05 | LLM-native threats | `tests/test_contamination.py` |
-| 06 | Quantify residual risk | [`sealed/THREAT_MODEL.md`](sealed/THREAT_MODEL.md) |
+### Option 3 — the website
 
-CI runs the containerized objective proofs (01–05) and deployability (04) on real
-Linux on every push.
+A simple, plain-language site: an overview, a 1-minute animated walkthrough, and a live
+console (run a test, get the signed proof, download a findings report).
+
+```bash
+cd web
+python -m http.server 8080            # then open http://localhost:8080
+```
+
+It deploys on **Vercel** with **Root Directory = `web`** and framework preset **Other**.
+To use the live console, start the system (Option 1) and press **Connect**.
+
+---
+
+## What’s in here
+
+| Path | What it is |
+|---|---|
+| [`sealed/`](sealed/) | the system itself (the broker, isolation, tamper-proof record, tests) |
+| [`web/`](web/) | the website (overview, walkthrough, live console) |
+| [`sealed/THREAT_MODEL.md`](sealed/THREAT_MODEL.md) | what it protects against — and, honestly, what it doesn’t |
+| [`sealed/docs/REFERENCES.md`](sealed/docs/REFERENCES.md) | how it maps to the OWASP Top 10 for LLM Applications (2025) |
+
+Every change is automatically tested on a real Linux machine (see the CI badge above).
+
+*Built for Hack in Hills ’26 · Track 04 (Bayora).*
