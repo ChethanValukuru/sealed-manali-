@@ -20,6 +20,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 AUDIT_URL = os.environ.get("AUDIT_URL", "http://audit:8001")
+AUDIT_WRITE_TOKEN = os.environ.get("AUDIT_WRITE_TOKEN")
+_HEADERS = {"X-Audit-Token": AUDIT_WRITE_TOKEN} if AUDIT_WRITE_TOKEN else {}
 
 app = FastAPI(title="sealed-monitor", version="0.4.0")
 
@@ -44,7 +46,7 @@ def alert(a: Alert) -> dict:
     _alerts_seen += 1
     try:
         with httpx.Client(timeout=10.0) as client:
-            client.post(f"{AUDIT_URL}/append", json={
+            client.post(f"{AUDIT_URL}/append", headers=_HEADERS, json={
                 "actor": "monitor",
                 "event": "alert",
                 "payload": {"source": a.source, "kind": a.kind, "detail": a.detail},

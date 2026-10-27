@@ -8,6 +8,10 @@ import os
 import httpx
 
 AUDIT_URL = os.environ.get("AUDIT_URL", "http://audit:8001")
+# Broker-only token for audit write endpoints (see audit/log.py). Sent on every
+# append so the published audit port can't be written to by other parties.
+AUDIT_WRITE_TOKEN = os.environ.get("AUDIT_WRITE_TOKEN")
+_HEADERS = {"X-Audit-Token": AUDIT_WRITE_TOKEN} if AUDIT_WRITE_TOKEN else {}
 
 # Reused pooled client (keep-alive to the audit service) — avoids a per-event
 # client construction + TCP handshake on the hot path.
@@ -28,7 +32,7 @@ def record(actor: str, event: str, test_id: str | None = None,
     body = {"actor": actor, "event": event, "test_id": test_id,
             "payload": payload or {}}
     try:
-        _client.post(f"{AUDIT_URL}/append", json=body)
+        _client.post(f"{AUDIT_URL}/append", json=body, headers=_HEADERS)
     except Exception:  # noqa: BLE001 - audit is append-only; log-and-continue
         # Phase 4's monitor will surface audit outages; for M1 we stay resilient.
         pass

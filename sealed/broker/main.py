@@ -212,8 +212,10 @@ def eval_attestation(test_id: str) -> dict:
         "flagged": test["flagged"] if test else None,
         "status": test["status"] if test else "unknown",
     }
+    headers = {"X-Audit-Token": audit_client.AUDIT_WRITE_TOKEN} if audit_client.AUDIT_WRITE_TOKEN else {}
     try:
-        r = _http.post(f"{AUDIT_URL}/attest", json={"eval_id": test_id, "facts": facts})
+        r = _http.post(f"{AUDIT_URL}/attest", json={"eval_id": test_id, "facts": facts},
+                       headers=headers)
         return r.json()
     except Exception:  # noqa: BLE001
         raise HTTPException(status_code=502, detail="audit service unavailable")

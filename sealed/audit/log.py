@@ -12,7 +12,7 @@ import threading
 import time
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -21,6 +21,16 @@ import chain
 DATA_DIR = Path(os.environ.get("AUDIT_DATA_DIR", "/data"))
 LOG_PATH = DATA_DIR / "audit.jsonl"
 KEYS_DIR = DATA_DIR / "keys"
+# Write endpoints (/append, /attest) are for trusted services only (broker,
+# monitor). When this is set, those calls must carry the matching X-Audit-Token,
+# so a party that can reach the published port cannot inject log entries or mint
+# forged attestations. Read endpoints (/log, /verify, ...) stay open.
+WRITE_TOKEN = os.environ.get("AUDIT_WRITE_TOKEN")
+
+
+def _guard_write(token: str | None) -> None:
+    if WRITE_TOKEN and token != WRITE_TOKEN:
+        raise HTTPException(status_code=403, detail="audit write not permitted")
 
 app = FastAPI(title="sealed-audit", version="0.4.0")
 # CORS so the minimal dashboard (served on another port) can read + verify.
@@ -72,8 +82,9 @@ def health() -> dict:
     return {"status": "ok", "service": "audit", "entries": _seq, "signed": True}
 
 
-@app.post("/append")
-def append(req: AppendReq) -> dict:
+def _append_entry(req: AppendReq) -> dict:
+    """Core append — extends the signed hash chain. Callers must already be
+    authorized (the /append endpoint guards; internal callers are trusted)."""
     global _seq, _last_hash
     with _lock:
         seq = _seq + 1
@@ -95,6 +106,13 @@ def append(req: AppendReq) -> dict:
     return {"seq": seq, "hash": h}
 
 
+@app.post("/append")
+def append(req: AppendReq,
+           x_audit_token: str | None = Header(default=None, alias="X-Audit-Token")) -> dict:
+    _guard_write(x_audit_token)
+    return _append_entry(req)
+
+
 @app.get("/log")
 def get_log(test_id: str | None = None, limit: int = 200) -> dict:
     entries = _read_entries(LOG_PATH)
@@ -104,11 +122,10 @@ def get_log(test_id: str | None = None, limit: int = 200) -> dict:
 
 
 @app.post("/verify")
-def verify(path: str | None = None) -> dict:
-    """Re-walk the chain and report integrity. Defaults to the live log."""
-    target = Path(path) if path else LOG_PATH
-    entries = _read_entries(target)
-    return chain.verify_chain(entries, _pub)
+def verify() -> dict:
+    """Re-walk the live audit chain and report integrity. (No caller-supplied
+    path — that would be an arbitrary-file-read vector.)"""
+    return chain.verify_chain(_read_entries(LOG_PATH), _pub)
 
 
 class AttestReq(BaseModel):
@@ -117,14 +134,16 @@ class AttestReq(BaseModel):
 
 
 @app.post("/attest")
-def attest(req: AttestReq) -> dict:
+def attest(req: AttestReq,
+           x_audit_token: str | None = Header(default=None, alias="X-Audit-Token")) -> dict:
     """Issue a signed attestation that an evaluation ran in a sound environment.
 
-    The attestation bundles the broker-reported facts with a fresh check that the
-    audit chain is intact, then Ed25519-signs the whole thing. Anyone with the
-    public key can verify it later (via /verify_attestation) — turning "trust us"
-    into "verify us".
+    Broker-only (guarded): otherwise anyone reaching the published port could mint
+    a signed attestation with forged facts. The attestation bundles the facts with
+    a fresh check that the audit chain is intact, then Ed25519-signs the whole
+    thing. Anyone with the public key can verify it (via /verify_attestation).
     """
+    _guard_write(x_audit_token)
     entries = _read_entries(LOG_PATH)
     chk = chain.verify_chain(entries, _pub)
     attestation = {
@@ -137,8 +156,8 @@ def attest(req: AttestReq) -> dict:
     }
     digest = chain.sha256_hex(chain.canonical(attestation))
     signature = chain.sign(_priv, digest)
-    append(AppendReq(test_id=req.eval_id, actor="audit", event="attestation_issued",
-                     payload={"chain_intact": attestation["chain_intact"]}))
+    _append_entry(AppendReq(test_id=req.eval_id, actor="audit", event="attestation_issued",
+                            payload={"chain_intact": attestation["chain_intact"]}))
     pub_pem = (KEYS_DIR / "ed25519_public.pem").read_text(encoding="utf-8")
     return {"attestation": attestation, "signature": signature, "public_key_pem": pub_pem}
 

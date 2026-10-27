@@ -34,6 +34,12 @@ Every "in scope" claim below names the test that proves it.*
 - **Audit tampering.** Append-only, SHA-256 hash-chained, Ed25519-signed log; any
   edit/insert/delete/reorder is detected at the exact entry. →
   `tests/test_audit.py`, `make verify-audit`, `make demo-tamper`
+- **Audit/attestation forgery over the published port.** The audit port is
+  exposed for the operator console, so its write endpoints (`/append`, `/attest`)
+  require a broker-only token — otherwise anyone reachable on that port could
+  inject log entries or mint a signed attestation with forged facts. The `/verify`
+  endpoint takes no caller-supplied path (no arbitrary-file-read). →
+  `tests/test_security.py`
 - **Silent boundary violations.** A one-way monitor records every policy violation
   to the audit log; tenants have no read path to it. →
   `tests/test_access.py::test_denial_is_recorded_and_monitored`

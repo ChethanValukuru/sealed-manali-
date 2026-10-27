@@ -89,15 +89,18 @@ def main() -> int:
     print(f">> data dir: {DATA_DIR}")
     print(">> starting services (secure + naive) ...")
     # Secure stack
-    spawn("audit", SEALED / "audit", "log:app", 8001, AUDIT_DATA_DIR=str(DATA_DIR))
+    AWT = "audit-write-dev"
+    spawn("audit", SEALED / "audit", "log:app", 8001, AUDIT_DATA_DIR=str(DATA_DIR),
+          AUDIT_WRITE_TOKEN=AWT)
     spawn("monitor", SEALED / "monitor", "monitor:app", 8005,
-          AUDIT_URL="http://127.0.0.1:8001")
+          AUDIT_URL="http://127.0.0.1:8001", AUDIT_WRITE_TOKEN=AWT)
     spawn("model", SEALED / "tenants/model", "wrapper:app", 8002,
           MOCK_MODEL="1", CONTEXT_MODE="fresh")
     spawn("blue", SEALED / "tenants/blue", "filter:app", 8003)
     spawn("broker", SEALED / "broker", "main:app", 8000,
           MODEL_URL="http://127.0.0.1:8002", BLUE_URL="http://127.0.0.1:8003",
           AUDIT_URL="http://127.0.0.1:8001", MONITOR_URL="http://127.0.0.1:8005",
+          AUDIT_WRITE_TOKEN=AWT,
           CAP_ENFORCE="1", RED_TOKEN=RED_TOKEN, BLUE_TOKEN=BLUE_TOKEN,
           MODEL_TOKEN=MODEL_TOKEN)
     spawn("red", SEALED / "tenants/red", "harness:app", 8004,
@@ -110,7 +113,7 @@ def main() -> int:
     spawn("naive-broker", SEALED / "broker", "main:app", 8010,
           MODEL_URL="http://127.0.0.1:8012", BLUE_URL="http://127.0.0.1:8003",
           AUDIT_URL="http://127.0.0.1:8001", MONITOR_URL="http://127.0.0.1:8005",
-          CAP_ENFORCE="0")
+          AUDIT_WRITE_TOKEN=AWT, CAP_ENFORCE="0")
 
     ports = {"audit": 8001, "monitor": 8005, "model": 8002, "blue": 8003,
              "broker": 8000, "red": 8004, "naive-model": 8012, "naive-broker": 8010}
@@ -229,6 +232,23 @@ def main() -> int:
         check("Live tamper-demo is caught", tam.get("caught") is True)
     except Exception as e:  # noqa: BLE001
         check("attestation feature", False, repr(e))
+
+    # --- Red-team: exposed audit writes must be rejected without the token ---
+    try:
+        inj = False
+        try:
+            http("POST", f"{AUDIT}/append", {"actor": "attacker", "event": "forged"})
+        except urllib.error.HTTPError as he:
+            inj = he.code == 403
+        check("Audit rejects unauthorized log injection", inj)
+        forge = False
+        try:
+            http("POST", f"{AUDIT}/attest", {"eval_id": "x", "facts": {"network_isolated": True}})
+        except urllib.error.HTTPError as he:
+            forge = he.code == 403
+        check("Audit rejects forged attestations", forge)
+    except Exception as e:  # noqa: BLE001
+        check("audit write hardening", False, repr(e))
 
     # --- M3: tamper-evident audit (verify + tamper) using the real chain code ---
     try:

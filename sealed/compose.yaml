@@ -27,6 +27,7 @@ services:
     build: ./audit
     environment:
       - AUDIT_DATA_DIR=/data
+      - AUDIT_WRITE_TOKEN=${AUDIT_WRITE_TOKEN:-audit-write-dev}
     volumes:
       - audit-data:/data
     ports:
@@ -79,6 +80,7 @@ services:
     <<: *hardening
     environment:
       - AUDIT_URL=http://audit:8001
+      - AUDIT_WRITE_TOKEN=${AUDIT_WRITE_TOKEN:-audit-write-dev}
     mem_limit: 128m
     cpus: 0.25
     pids_limit: 64
@@ -96,6 +98,7 @@ services:
       - BLUE_URL=http://blue:8003
       - AUDIT_URL=http://audit:8001
       - MONITOR_URL=http://monitor:8005
+      - AUDIT_WRITE_TOKEN=${AUDIT_WRITE_TOKEN:-audit-write-dev}
       - TIMING_QUANTUM_MS=${TIMING_QUANTUM_MS:-0}
       - CAP_ENFORCE=1
       # Broker holds every tenant's token to build its capability table.
