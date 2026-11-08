@@ -28,6 +28,10 @@ services:
     environment:
       - AUDIT_DATA_DIR=/data
       - AUDIT_WRITE_TOKEN=${AUDIT_WRITE_TOKEN:-audit-write-dev}
+      # Independent witnesses co-sign the transparency-log checkpoint (on audit-net,
+      # so tenants can't reach them). A quorum must co-sign for a checkpoint to count.
+      - WITNESS_URLS=${WITNESS_URLS:-http://witness1:8006,http://witness2:8006}
+      - WITNESS_QUORUM=${WITNESS_QUORUM:-2}
     volumes:
       - audit-data:/data
     ports:
@@ -42,6 +46,39 @@ services:
     cpus: 0.5
     pids_limit: 128
     restart: unless-stopped
+    networks:
+      - audit-net
+
+  # Independent transparency-log witnesses — separate services, separate Ed25519
+  # keys. Each co-signs a checkpoint ONLY after verifying append-only consistency,
+  # so a compromised audit key alone cannot rewrite witnessed history. On audit-net
+  # only (tenants cannot reach them). Run more and raise WITNESS_QUORUM for stronger
+  # guarantees.
+  witness1:
+    build: ./witness
+    <<: *hardening
+    environment:
+      - WITNESS_NAME=witness-A
+      - WITNESS_DATA_DIR=/data
+    volumes:
+      - witness1-data:/data
+    mem_limit: 128m
+    cpus: 0.25
+    pids_limit: 64
+    networks:
+      - audit-net
+
+  witness2:
+    build: ./witness
+    <<: *hardening
+    environment:
+      - WITNESS_NAME=witness-B
+      - WITNESS_DATA_DIR=/data
+    volumes:
+      - witness2-data:/data
+    mem_limit: 128m
+    cpus: 0.25
+    pids_limit: 64
     networks:
       - audit-net
 
@@ -163,3 +200,5 @@ networks:
 
 volumes:
   audit-data:
+  witness1-data:
+  witness2-data:

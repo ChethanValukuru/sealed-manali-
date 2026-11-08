@@ -48,8 +48,12 @@
     $("verifyBtn").disabled = !connected.audit;
     $("tamperBtn").disabled = !connected.audit;
     $("getProof").disabled = !(connected.broker && lastTest);
+    $("witnessedBtn").disabled = !connected.audit;
+    $("proveLedgerBtn").disabled = !(connected.broker && lastTest);
+    setVerifyLink();
     await renderHealth();
     await renderActivity();
+    await renderLedger(false);
   }
 
   var GOOD = { enforced: 1, on: 1, one_way: 1, dropped_all: 1, read_only: 1 };
@@ -100,7 +104,8 @@
     test_conclude: "The test finished",
     policy_violation: "An unauthorized request was blocked",
     alert: "The security watcher noted something",
-    disclosure_withheld: "The attack was kept hidden from the defenders"
+    disclosure_withheld: "The attack was kept hidden from the defenders",
+    attestation_issued: "A signed proof was issued and recorded"
   };
 
   async function renderActivity() {
@@ -132,6 +137,8 @@
       $("checkProof").disabled = true;
       $("downloadProof").disabled = true;
       $("reportBtn").disabled = true;
+      $("proveLedgerBtn").disabled = !connected.broker;
+      setVerifyLink();
     }
     showOut(res.ok ? "Done. A round of tests just ran — you can follow each step in the activity below, or get a proof it was sound."
       : "Couldn't reach your system. Is it running?");
@@ -276,6 +283,54 @@
       : "Run a test first so there is something to check.");
   }
 
+  // ---- transparency ledger + independent checkers (witnesses) ----
+  function shortHash(h) { return h ? (h.slice(0, 10) + "…" + h.slice(-6)) : ""; }
+
+  function setVerifyLink() {
+    var a = $("verifySelfLink"); if (!a) return;
+    if (lastTest && connected.broker) {
+      a.href = "verify.html#backend=" + encodeURIComponent(urls.broker) + "&test=" + encodeURIComponent(lastTest);
+      a.style.pointerEvents = ""; a.style.opacity = "1";
+    } else { a.href = "verify.html"; a.style.pointerEvents = "none"; a.style.opacity = ".5"; }
+  }
+
+  async function renderLedger(detail) {
+    var box = $("ledgerStatus");
+    if (!connected.audit) { box.style.display = "none"; return; }
+    var res = await getJSON(trim(urls.audit) + "/log/checkpoint/witnessed");
+    if (!res.ok || !res.data || !res.data.checkpoint) { box.style.display = "none"; return; }
+    var d = res.data, n = d.checkpoint.tree_size, w = d.witness_count || 0;
+    box.style.display = "";
+    box.textContent = "Public ledger: " + n + " record" + (n === 1 ? "" : "s") + " · " +
+      (w > 0 ? ("co-signed by " + w + " independent checker" + (w === 1 ? "" : "s") + " ✓")
+             : "awaiting independent checkers") + ".";
+    if (detail) {
+      var out = $("ledgerOut"); out.style.display = "";
+      var names = (d.witnesses || []).map(function (x) { return x.name; }).join(", ");
+      out.textContent = "Ledger fingerprint " + shortHash(d.checkpoint.root_hash) + " over " + n +
+        " records. " + (w > 0
+          ? ("Co-signed right now by: " + names + ". Each checker signs only after proving the ledger " +
+             "was never rewritten — tamper with history and they refuse, so no single key (not even ours) " +
+             "can quietly change the record.")
+          : "No independent checkers are configured on this system.");
+    }
+  }
+
+  async function proveInLedger() {
+    var out = $("ledgerOut"); out.style.display = "";
+    if (!lastTest) { out.textContent = "Run a test first."; return; }
+    out.textContent = "Looking up this test in the public ledger…";
+    var res = await getJSON(trim(urls.broker) + "/eval/proof/" + encodeURIComponent(lastTest));
+    if (!res.ok || !res.data || !res.data.inclusion) { out.textContent = "Couldn't build the proof. Is the system running?"; return; }
+    var d = res.data, inc = d.inclusion, w = (d.witnesses || []).length;
+    setVerifyLink();
+    out.textContent = "This test is permanently recorded — entry " + (inc.leaf_index + 1) + " of " +
+      inc.tree_size + " in the public ledger" +
+      (w > 0 ? (", co-signed by " + w + " independent checker" + (w === 1 ? "" : "s")) : "") +
+      ". Nothing can remove or alter it without breaking the proof. Press “Verify it yourself” to " +
+      "re-check this in your own browser — trusting nothing.";
+  }
+
   function connect() {
     ["broker", "audit", "red"].forEach(function (k) { urls[k] = trim($(k).value); });
     try { localStorage.setItem(LS, JSON.stringify(urls)); } catch (e) {}
@@ -294,6 +349,8 @@
   $("downloadProof").addEventListener("click", downloadProof);
   $("reportBtn").addEventListener("click", buildReport);
   $("tamperBtn").addEventListener("click", tamperDemo);
+  $("witnessedBtn").addEventListener("click", function () { renderLedger(true); });
+  $("proveLedgerBtn").addEventListener("click", proveInLedger);
 
   mixedContentWarning();
   probe();

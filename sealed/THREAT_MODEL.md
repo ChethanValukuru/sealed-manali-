@@ -34,6 +34,20 @@ Every "in scope" claim below names the test that proves it.*
 - **Audit tampering.** Append-only, SHA-256 hash-chained, Ed25519-signed log; any
   edit/insert/delete/reorder is detected at the exact entry. →
   `tests/test_audit.py`, `make verify-audit`, `make demo-tamper`
+- **Undetectable history rewrite / equivocation (bounded).** The Evaluation
+  Transparency Log (RFC 6962 Merkle) publishes a signed checkpoint and serves
+  inclusion + consistency proofs, so anyone holding an earlier checkpoint can prove
+  the ledger is append-only and was not silently rewritten between two checkpoints.
+  Anyone can re-verify a proof client-side with only the public key (`web/verify.html`).
+  → `tests/test_transparency.py`, transparency checks in `tools/local_e2e.py`.
+- **Audit-key compromise / history forking (mitigated by witnessing).** A quorum of
+  **independent witnesses** (`witness/`, separate services and keys) co-sign each
+  checkpoint and **refuse** to co-sign one that is not an append-only extension of the
+  last they saw. So a compromised *audit* key can no longer rewrite witnessed history
+  on its own — an attacker would also have to compromise a quorum of independent
+  witness keys. → `tests/test_transparency.py::test_witness_rejects_fork_accepts_append_only`
+  and the witnessing checks in `tools/local_e2e.py`. **Limit:** trust-on-first-use per
+  witness; a strong form (fixing a genesis, cross-witness gossip) is future work.
 - **Audit/attestation forgery over the published port.** The audit port is
   exposed for the operator console, so its write endpoints (`/append`, `/attest`)
   require a broker-only token — otherwise anyone reachable on that port could
@@ -60,9 +74,13 @@ Every "in scope" claim below names the test that proves it.*
 - **A compromised host kernel or container engine.**
 - **A malicious broker.** The broker is trusted in this model (it mediates all
   traffic). A compromised broker defeats the guarantees.
-- **A compromised audit service.** It holds the Ed25519 signing key, so it could
-  forge a fresh chain. The chain protects against everyone *without* the key
-  (tenants, storage, transport), not against the signer itself.
+- **A compromised audit service.** It holds the Ed25519 signing key, so on its own
+  the *chain* protects against everyone *without* the key (tenants, storage, transport)
+  but not against the signer itself. **Independent checkpoint witnessing now reduces
+  this** (see "Audit-key compromise / history forking" above): a compromised audit key
+  alone cannot rewrite witnessed history, since it cannot produce the consistency
+  proofs a quorum of independent witnesses demand. Defeating a *coalition* of the audit
+  service **and** a quorum of witnesses remains out of scope.
 
 ## Conditions under which guarantees fail
 

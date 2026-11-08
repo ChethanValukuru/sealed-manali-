@@ -49,13 +49,34 @@ complete, clean deploy on a fresh VM via `make up`. (Runtime run pending on a Li
 - **Honesty + perf (Phase 4 / M7):** `THREAT_MODEL.md` (Obj 06); `tests/test_latency.py` +
   `make latency` report isolation overhead (Obj 01). Minimal `dashboard/index.html` (`make dashboard`).
 
-## Verification status (2026-10-07)
+## Verification status (2026-11-08)
 
 - **Logic proven by real execution** via `tools/local_e2e.py` (runs all services as
-  local processes, no Docker): **17/17 checks pass** — M1 eval loop, M3 audit
+  local processes, no Docker): **31/31 checks pass** — M1 eval loop, M3 audit
   verify+tamper, M4 fresh-context (secure clean / naive leaks `ZEBRA-4417`),
   M5 tokens+gating+monitor, the verifiable attestation feature (signed/verifies/
-  forgery-rejected/live-tamper-caught), and Obj01 latency.
+  forgery-rejected/live-tamper-caught), the **Evaluation Transparency Log**
+  (signed Merkle checkpoint + inclusion/consistency proofs + IETF AAT export +
+  selective disclosure), **independent checkpoint witnessing** (quorum co-signs;
+  a witness refuses a forked ledger), and Obj01 latency.
+- **Independent checkpoint witnessing** (new standout feature): `witness/witness.py`
+  is a separate service with its own Ed25519 key and a self-contained RFC 6962
+  consistency check; it co-signs a checkpoint only after verifying append-only
+  consistency vs the last it saw, and returns 409 on a fork/rollback/equivocation.
+  Audit coordinates via `/log/cosign` + `/log/checkpoint/witnessed` (env `WITNESS_URLS`,
+  `WITNESS_QUORUM`); the broker proof bundle and `web/verify.html` carry + verify the
+  witness co-signatures. Closes the "compromised audit key could fork a fresh chain"
+  gap in THREAT_MODEL.md. Proven by `tests/test_transparency.py` + harness checks.
+- **Evaluation Transparency Log** (new standout feature): RFC 6962 Merkle over the
+  signed chain in `audit/merkle.py`; endpoints `/log/checkpoint`, `/log/proof/inclusion`,
+  `/log/proof/consistency`, `/log/public`, `/log/aat`; broker `/eval/proof/{test_id}`
+  bundles attestation + inclusion. IETF *Agent Audit Trail* export in `audit/aat.py`
+  (the Merkle checkpoint is the draft's §6.4 batch anchor). Zero-trust in-browser
+  verifier `web/verify.html` + `web/verify.js` (noble-ed25519 + WebCrypto SHA-256,
+  cross-language canonical JSON verified in Node against the real bundle) with a live
+  tamper theatre + QR proof receipt. Proven by `tests/test_transparency.py` (container-
+  free, 6/6) + harness checks. NOTE: checkpoint/attestation timestamps are int ms so
+  signed bytes match the JS verifier exactly.
 - **Verifiable Evaluation Attestation** (headline feature): broker
   `GET /eval/attestation/{test_id}` gathers facts + asks audit to sign them;
   audit `POST /verify_attestation` and `POST /tamper_demo`. Signed with the audit
@@ -63,8 +84,9 @@ complete, clean deploy on a fresh VM via `make up`. (Runtime run pending on a Li
   `tests/test_attestation.py`. This is the spec's "isolation attestation / product soul".
 - **Efficiency fix applied:** broker + `audit_client` now reuse a pooled `httpx.Client`
   instead of one-per-call. Mediated eval overhead dropped ~6108 ms → ~32 ms/eval.
-- **pytest suite**: 18 tests collect cleanly; they SKIP without a container engine and
-  will run on the Linux VM via `make test`.
+- **pytest suite**: the container-dependent suites SKIP without a container engine and
+  run on the Linux VM via `make test`; `tests/test_transparency.py` (6 tests) is pure
+  and **runs anywhere**, giving real CI coverage for the transparency-log feature.
 - **Not yet run anywhere:** M2 isolation (network/seccomp/rootfs/caps/namespaces) and
   Obj04 deployability — these require a Linux Docker/Podman host; statically verified.
 

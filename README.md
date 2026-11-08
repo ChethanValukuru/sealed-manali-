@@ -27,7 +27,7 @@ until the test ends), and every step is written to a tamper-proof record.
 - **A trusted go-between** — the broker mediates all traffic and enforces who may see what.
 - **Fresh AI each test** — the model starts every test with a blank memory, so one test can’t contaminate the next.
 - **Tamper-proof record** — every action is hash-chained and digitally signed; any edit is caught.
-- **A proof you can check** — each finding comes with a signed certificate that the test was sound; anyone can verify it.
+- **A proof you can check** — each finding comes with a signed certificate that the test was sound, published to a tamper-evident **transparency ledger** that **independent witnesses co-sign** (like Certificate Transparency for AI-safety tests), so not even sealed's own audit service can rewrite history. Anyone can verify it **in their own browser**, trusting nothing — [`web/verify.html`](web/verify.html).
 
 ---
 
@@ -65,13 +65,15 @@ Optional: `make fetch-datasets` to replay the real **AdvBench** benchmark attack
 git clone https://github.com/ChethanValukuru/sealed-manali-.git
 cd sealed-manali-
 pip install -r sealed/tools/requirements.txt
-python sealed/tools/local_e2e.py      # runs everything locally -> "19/19 checks passed"
+python sealed/tools/local_e2e.py      # runs everything locally -> "31/31 checks passed"
 ```
 
 ### Option 3 — the website
 
-A simple, plain-language site: an overview, a 1-minute animated walkthrough, and a live
-console (run a test, get the signed proof, download a findings report).
+A simple, plain-language site: an overview, a 1-minute animated walkthrough, a live
+console (run a test, get the signed proof, download a findings report), and a
+**zero-trust proof verifier** (`verify.html`) that re-checks a proof's signatures and
+Merkle inclusion entirely in your browser — with a live tamper demo.
 
 ```bash
 cd web

@@ -221,6 +221,62 @@ def eval_attestation(test_id: str) -> dict:
         raise HTTPException(status_code=502, detail="audit service unavailable")
 
 
+@app.get("/eval/proof/{test_id}")
+def eval_proof(test_id: str) -> dict:
+    """The full, self-contained proof bundle for the public verifier:
+
+      * the signed attestation (facts + 'chain intact'),
+      * a Merkle inclusion proof that this test's conclusion is in the
+        Evaluation Transparency Log, under the ledger's signed root.
+
+    A verifier can check all of it offline with only the public key — see
+    web/verify.html. No trust in sealed required.
+    """
+    bundle = eval_attestation(test_id)  # signed attestation (via audit /attest)
+    inclusion = None
+    anchor_event = None
+    try:
+        log = _http.get(f"{AUDIT_URL}/log",
+                        params={"test_id": test_id, "limit": 500}).json()
+        entries = log.get("entries", [])
+        concl = [e for e in entries if e.get("event") == "test_conclude"]
+        anchor = concl[-1] if concl else (entries[-1] if entries else None)
+        if anchor is not None:
+            anchor_event = anchor.get("event")
+            inclusion = _http.get(f"{AUDIT_URL}/log/proof/inclusion",
+                                  params={"seq": anchor["seq"]}).json()
+    except Exception:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail="transparency log unavailable")
+
+    # Independent witnesses co-sign the ledger checkpoint (trust-minimizing: no
+    # single key, not even the audit service's, can rewrite history unnoticed).
+    witnesses: list = []
+    witnessed = False
+    quorum = 0
+    if inclusion is not None:
+        try:
+            co = _http.post(f"{AUDIT_URL}/log/cosign",
+                            json={"checkpoint": inclusion["checkpoint"],
+                                  "signature": inclusion["signature"]}).json()
+            witnesses = co.get("witnesses", [])
+            witnessed = co.get("witnessed", False)
+            quorum = co.get("quorum", 0)
+        except Exception:  # noqa: BLE001
+            pass
+
+    return {
+        "test_id": test_id,
+        "attestation": bundle["attestation"],
+        "signature": bundle["signature"],
+        "public_key_pem": bundle["public_key_pem"],
+        "anchor_event": anchor_event,
+        "inclusion": inclusion,
+        "witnesses": witnesses,
+        "witnessed": witnessed,
+        "quorum": quorum,
+    }
+
+
 @app.get("/health/isolation")
 def health_isolation() -> dict:
     """Live boundary status for the dashboard."""

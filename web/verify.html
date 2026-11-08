@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sealed — Verify a proof</title>
+<style>
+  :root{
+    --bg:#f6f5f1; --surface:#fff; --surface-2:#f1efe9; --text:#22272b; --muted:#5e666d;
+    --line:#e4e1d9; --line2:#d4d0c6; --accent:#4c7a6b; --accent-ink:#355849;
+    --soft:#e8efea; --ok:#4c7a6b; --warn:#9a7b33; --bad:#a9544b;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#15181b; --surface:#1c2024; --surface-2:#22262b; --text:#e7e9e7;
+      --muted:#9ba3a9; --line:#2a2f34; --line2:#363c42; --accent:#80b1a1;
+      --accent-ink:#a7ccc0; --soft:#1f2a27; --ok:#80b1a1; --warn:#c6a252; --bad:#cf7f76; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+       font-size:15px; line-height:1.55;}
+  .wrap{max-width:860px; margin:0 auto; padding:28px 20px 60px;}
+  a{color:var(--accent-ink);}
+  h1{font-family:var(--serif); font-size:30px; letter-spacing:-.3px; margin:0 0 4px;}
+  .sub{color:var(--muted); margin:0 0 20px;}
+  .lock{vertical-align:-6px; margin-right:8px;}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:12px;
+        padding:16px 18px; margin:0 0 16px;}
+  label{display:block; font-size:12px; text-transform:uppercase; letter-spacing:.6px;
+        color:var(--muted); margin:0 0 4px;}
+  input[type=text]{width:100%; padding:9px 11px; border:1px solid var(--line2);
+        border-radius:8px; background:var(--bg); color:var(--text); font-size:14px;
+        font-family:var(--sans);}
+  .row{display:grid; grid-template-columns:1fr 220px; gap:12px;}
+  .btns{display:flex; gap:9px; flex-wrap:wrap; margin-top:12px;}
+  button{font-family:var(--sans); font-size:13.5px; font-weight:600; padding:9px 15px;
+        border-radius:8px; border:1px solid var(--line2); background:var(--surface-2);
+        color:var(--text); cursor:pointer;}
+  button.primary{background:var(--accent-ink); border-color:var(--accent-ink); color:#fff;}
+  button.ghost{background:transparent;}
+  button.danger{color:var(--bad); border-color:#e6c4bd;}
+  button:disabled{opacity:.5; cursor:not-allowed;}
+  .muted{color:var(--muted);} .mono{font-family:Consolas,Menlo,monospace; font-size:12.5px;}
+  .verdict{display:flex; align-items:center; gap:14px; padding:16px 18px; border-radius:12px;
+           font-family:var(--serif); font-size:24px; margin-bottom:16px;}
+  .verdict.ok{background:var(--soft); color:var(--accent-ink); border:1px solid #bcd8cc;}
+  .verdict.bad{background:#f7e7e4; color:var(--bad); border:1px solid #e6c4bd;}
+  .verdict .big{font-size:34px; line-height:1;}
+  .step{display:flex; align-items:flex-start; gap:11px; padding:10px 0; border-bottom:1px solid var(--line);}
+  .step:last-child{border-bottom:0;}
+  .tick{flex:0 0 auto; width:24px; height:24px; border-radius:50%; display:flex;
+        align-items:center; justify-content:center; font-weight:800; font-size:14px; color:#fff;}
+  .tick.ok{background:var(--ok);} .tick.bad{background:var(--bad);}
+  .step .t{font-weight:600;} .step .d{color:var(--muted); font-size:13px;}
+  .facts{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:6px;}
+  .fact{background:var(--surface-2); border-radius:8px; padding:8px 10px; font-size:12.5px;}
+  .fact b{display:block; color:var(--accent-ink); font-size:11px; text-transform:uppercase; letter-spacing:.4px;}
+  .theatre{display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start;}
+  .theatre .col{flex:1 1 300px;}
+  #qr{display:inline-block; background:#fff; padding:10px; border-radius:10px; margin-top:8px;}
+  .pill{display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px;
+        background:var(--soft); color:var(--accent-ink); letter-spacing:.3px;}
+  .hide{display:none;}
+  .hint{font-size:12.5px; color:var(--muted); margin-top:7px;}
+  .err{color:var(--bad); font-size:13px; margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><svg class="lock" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/></svg>Verify a sealed proof</h1>
+  <p class="sub">Check an AI-safety test yourself — the signatures and the Merkle inclusion are
+     recomputed <b>in your browser</b>. Nothing here trusts sealed. <span class="pill">zero-trust</span></p>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>sealed backend URL</label>
+        <input id="backend" type="text" placeholder="http://localhost:8000" value="http://localhost:8000">
+      </div>
+      <div>
+        <label>Test ID</label>
+        <input id="testid" type="text" placeholder="test-abc123…">
+      </div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="fetchBtn">Fetch &amp; verify</button>
+      <button class="ghost" id="pasteBtn">Paste a proof instead</button>
+    </div>
+    <div id="pasteWrap" class="hide" style="margin-top:12px;">
+      <label>Proof bundle (JSON)</label>
+      <textarea id="pasteArea" rows="5" style="width:100%; font-family:Consolas,Menlo,monospace; font-size:12px; border:1px solid var(--line2); border-radius:8px; background:var(--bg); color:var(--text); padding:9px;"></textarea>
+      <div class="btns"><button class="primary" id="verifyPasteBtn">Verify pasted proof</button></div>
+    </div>
+    <div id="err" class="err"></div>
+    <p class="hint">Tip: run a test, then <span class="mono">GET /eval/proof/&lt;test_id&gt;</span> on the broker gives a shareable proof bundle.</p>
+  </div>
+
+  <div id="result" class="hide">
+    <div id="verdict" class="verdict"></div>
+
+    <div class="card">
+      <div id="steps"></div>
+    </div>
+
+    <div class="card">
+      <label>What the proof attests</label>
+      <div id="facts" class="facts"></div>
+      <p class="hint mono" id="rootline"></p>
+    </div>
+
+    <div class="card">
+      <div class="theatre">
+        <div class="col">
+          <label>Tamper theatre — try to cheat the proof</label>
+          <p class="hint" style="margin-top:0;">Change one byte of the signed evidence and watch verification fail at the exact step.</p>
+          <div class="btns">
+            <button class="danger" data-tamper="attestation">Edit the result</button>
+            <button class="danger" data-tamper="path">Corrupt the Merkle path</button>
+            <button class="danger" data-tamper="sig">Forge the signature</button>
+            <button class="danger" data-tamper="witness">Forge a witness</button>
+            <button class="ghost" id="restoreBtn">Restore original</button>
+          </div>
+        </div>
+        <div class="col">
+          <label>Proof receipt</label>
+          <div id="qr"></div>
+          <div class="btns">
+            <button class="ghost" id="dlBtn">Download .sealedproof</button>
+            <button class="ghost" id="copyBtn">Copy self-verifying link</button>
+          </div>
+          <p class="hint">Scan to open this verifier and re-check the live proof.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./vendor/qrcode.min.js"></script>
+<script type="module">
+import { verifyBundle } from "./verify.js";
+
+const $ = s => document.querySelector(s);
+let original = null, working = null, qr = null;
+
+function b64urlEncode(str){ return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function b64urlDecode(s){ s=s.replace(/-/g,'+').replace(/_/g,'/'); return decodeURIComponent(escape(atob(s))); }
+
+async function renderBundle(bundle){
+  original = bundle; working = structuredClone(bundle);
+  $("#result").classList.remove("hide");
+  await runVerify();
+  buildReceipt();
+}
+
+async function runVerify(){
+  let res;
+  try { res = await verifyBundle(working); }
+  catch(e){ showErr("Could not verify: "+e.message); return; }
+  const v = $("#verdict");
+  v.className = "verdict " + (res.ok ? "ok" : "bad");
+  v.innerHTML = res.ok
+    ? '<span class="big">✓</span><div><div>Proof verified</div><div style="font-size:13px; font-weight:400; color:var(--muted)">Signed, in the ledger, and uncontaminated — checked in your browser.</div></div>'
+    : '<span class="big">✕</span><div><div>Proof failed</div><div style="font-size:13px; font-weight:400; color:var(--muted)">At least one check did not hold. See below.</div></div>';
+  $("#steps").innerHTML = res.steps.map(s => `
+    <div class="step">
+      <div class="tick ${s.ok?'ok':'bad'}">${s.ok?'✓':'✕'}</div>
+      <div><div class="t">${s.label}</div><div class="d">${s.detail}</div></div>
+    </div>`).join("");
+  const f = res.facts;
+  $("#facts").innerHTML = Object.keys(f).length ? Object.entries(f).map(([k,val]) =>
+    `<div class="fact"><b>${k.replace(/_/g,' ')}</b>${fmt(val)}</div>`).join("")
+    : '<div class="muted">no facts in attestation</div>';
+  $("#rootline").textContent = `ledger root ${res.root} · ${res.treeSize} records`;
+}
+function fmt(v){ return v===true?'✓ yes':v===false?'✕ no':(v===null?'—':String(v)); }
+
+function buildReceipt(){
+  const backend = $("#backend").value.trim();
+  const tid = (original.test_id)||$("#testid").value.trim();
+  const link = location.origin + location.pathname + "#backend=" + encodeURIComponent(backend) + "&test=" + encodeURIComponent(tid);
+  $("#qr").innerHTML = "";
+  qr = null;
+  try { qr = new QRCode($("#qr"), { text: link, width: 150, height: 150,
+        colorDark:"#22272b", colorLight:"#ffffff", correctLevel: QRCode.CorrectLevel.M }); }
+  catch(_) { $("#qr").innerHTML = '<span class="muted" style="font-size:12px">QR unavailable</span>'; }
+}
+
+function showErr(m){ $("#err").textContent = m; }
+function clearErr(){ $("#err").textContent = ""; }
+
+async function fetchProof(){
+  clearErr();
+  const backend = $("#backend").value.trim().replace(/\/$/,"");
+  const tid = $("#testid").value.trim();
+  if(!backend || !tid){ showErr("Enter a backend URL and a test ID."); return; }
+  try {
+    const r = await fetch(`${backend}/eval/proof/${encodeURIComponent(tid)}`);
+    if(!r.ok){ showErr(`Backend returned ${r.status}.`); return; }
+    const bundle = await r.json();
+    if(!bundle.inclusion){ showErr("No inclusion proof in the response."); return; }
+    await renderBundle(bundle);
+  } catch(e){ showErr("Could not reach the backend (CORS or offline). "+e.message); }
+}
+
+// ---- tamper theatre ----
+document.querySelectorAll("[data-tamper]").forEach(b => b.addEventListener("click", async () => {
+  if(!working) return;
+  const kind = b.getAttribute("data-tamper");
+  if(kind==="attestation"){ const f = working.attestation.facts||{}; f.attacks = (f.attacks||0)+1; working.attestation.facts = f; }
+  if(kind==="path" && working.inclusion.audit_path.length){ const p=working.inclusion.audit_path; p[0] = flipHex(p[0]); }
+  if(kind==="path" && !working.inclusion.audit_path.length){ working.inclusion.entry_hash = flipHex(working.inclusion.entry_hash); }
+  if(kind==="sig"){ working.signature = flipHex(working.signature); }
+  if(kind==="witness" && working.witnesses && working.witnesses.length){ working.witnesses[0].signature = flipHex(working.witnesses[0].signature); }
+  await runVerify();
+}));
+$("#restoreBtn").addEventListener("click", async () => { working = structuredClone(original); await runVerify(); });
+function flipHex(h){ const c=h[0]==="0"?"1":"0"; return c + h.slice(1); }
+
+// ---- receipt actions ----
+$("#dlBtn").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(original,null,2)], {type:"application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = (original.test_id||"proof")+".sealedproof.json"; a.click();
+});
+$("#copyBtn").addEventListener("click", () => {
+  const link = location.origin + location.pathname + "#auto=" + b64urlEncode(JSON.stringify(original));
+  navigator.clipboard.writeText(link).then(()=>{ $("#copyBtn").textContent="Copied!"; setTimeout(()=>$("#copyBtn").textContent="Copy self-verifying link",1500); });
+});
+
+// ---- wiring ----
+$("#fetchBtn").addEventListener("click", fetchProof);
+$("#pasteBtn").addEventListener("click", () => $("#pasteWrap").classList.toggle("hide"));
+$("#verifyPasteBtn").addEventListener("click", async () => {
+  clearErr();
+  try { await renderBundle(JSON.parse($("#pasteArea").value)); }
+  catch(e){ showErr("Invalid JSON: "+e.message); }
+});
+
+// ---- deep links: #auto=<bundle> (offline) or #backend=..&test=.. ----
+(function initFromHash(){
+  const h = new URLSearchParams(location.hash.slice(1));
+  if(h.get("auto")){
+    try { renderBundle(JSON.parse(b64urlDecode(h.get("auto")))); } catch(e){ showErr("Bad proof link."); }
+  } else if(h.get("backend") || h.get("test")){
+    if(h.get("backend")) $("#backend").value = h.get("backend");
+    if(h.get("test")) $("#testid").value = h.get("test");
+    fetchProof();
+  }
+})();
+</script>
+</body>
+</html>

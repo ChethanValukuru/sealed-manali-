@@ -19,11 +19,12 @@
 <nav class="nav">
   <div class="wrap">
     <a class="brand" href="/">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="7" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="9" y="9" width="14" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="14" y="14" width="4" height="4" rx="1.2" fill="currentColor"/></svg>
+      <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="7" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="9" y="9" width="14" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="14" y="14" width="4" height="4" rx="1.2" fill="currentColor"/></svg>
       sealed
     </a>
     <span class="spacer"></span>
     <a href="walkthrough.html" class="hide-sm">Walkthrough</a>
+    <a href="verify.html">Verify</a>
     <a href="/" class="cta">Overview</a>
     <button class="toggle" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
   </div>
@@ -82,6 +83,19 @@
       <button class="btn sm ghost" id="tamperBtn" disabled>Show tamper detection</button>
     </div>
     <div class="result" id="proofOut" style="margin-top:14px; display:none"></div>
+  </div>
+
+  <!-- transparency ledger + witnesses -->
+  <div class="panel">
+    <h3>Public ledger &amp; independent checkers</h3>
+    <p class="muted" style="margin:-2px 0 14px; font-size:.9rem">Every test is written to a tamper-evident <strong>public ledger</strong>. A group of <strong>independent checkers</strong> co-sign it, so no one — not even us — can secretly rewrite history. Anyone can re-check a result in their own browser, trusting nothing.</p>
+    <div id="ledgerStatus" class="result" style="display:none; margin-bottom:14px"></div>
+    <div class="btn-row">
+      <button class="btn sm" id="witnessedBtn" disabled>Show the ledger &amp; its checkers</button>
+      <button class="btn sm ghost" id="proveLedgerBtn" disabled>Prove this test is in the ledger</button>
+      <a class="btn sm ghost" id="verifySelfLink" href="verify.html" target="_blank" rel="noopener" style="pointer-events:none; opacity:.5">Verify it yourself in your browser →</a>
+    </div>
+    <div class="result" id="ledgerOut" style="margin-top:14px; display:none"></div>
   </div>
 
   <!-- activity -->

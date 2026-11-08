@@ -120,8 +120,11 @@ python tools/local_e2e.py
 This launches every service as a local process over 127.0.0.1 and checks the
 real eval loop, fresh-context vs naive contamination, capability tokens, disclosure
 gating, the one-way monitor, the tamper-evident audit chain, the signed attestation,
-and the audit write-hardening — **19/19 passing**, with a measured mediated-eval
-overhead of ~30 ms. It does **not** cover the
+the audit write-hardening, the **Evaluation Transparency Log** (signed Merkle
+checkpoint, inclusion + consistency proofs, IETF AAT export, selective disclosure),
+and **independent checkpoint witnessing** (a quorum of witnesses co-signs the ledger
+and refuses to co-sign a forked history) — **31/31 passing**, with a measured
+mediated-eval overhead of ~30 ms. It does **not** cover the
 container-isolation asserts (network/seccomp/rootfs/caps/namespaces) or
 deployability — those need the Linux container run via `make test`.
 
@@ -167,6 +170,54 @@ make dashboard        # serves http://localhost:8080
 Isolation Health (live), audit log tail with a **Verify integrity** button, and
 buttons to run an eval and a contamination probe. Reads the broker/audit/red APIs
 (CORS-enabled); the secure stack must be up.
+
+## Evaluation Transparency Log (the standout feature)
+
+A signed audit log proves *you* can't deny what happened. A **transparency log**
+proves it to *everyone* — the same construction behind HTTPS Certificate
+Transparency and Sigstore/Rekor, applied to AI-safety tests. On top of the hash
+chain, the audit service now publishes a **Merkle tree** with:
+
+- **a signed checkpoint** (Signed Tree Head) — the Merkle root over every record,
+  Ed25519-signed: `GET /log/checkpoint`
+- **inclusion proofs** — logarithmic proof that one test is in the ledger, under
+  the signed root: `GET /log/proof/inclusion?seq=N`
+- **consistency proofs** — proof the ledger is append-only and was never rewritten
+  between two checkpoints: `GET /log/proof/consistency?first=A&second=B`
+- **selective disclosure** — `GET /log/public` returns the ledger with payloads
+  redacted to hashes (attack text is never stored in the clear anyway)
+- **IETF-standard export** — `GET /log/aat` emits the log in the
+  [Agent Audit Trail draft](docs/REFERENCES.md) format (mandatory fields + its own
+  RFC 8785 / JCS hash chain). The Merkle checkpoint *is* that draft's optional
+  §6.4 batch anchor.
+- **independent checkpoint witnessing** — the audit service signs its own ledger, so
+  in principle a *compromised audit key* could fork a fresh chain. A quorum of
+  independent **witnesses** (separate services, separate keys, in `witness/`) each
+  co-sign a checkpoint **only after verifying it is an append-only extension** of the
+  one they last saw — and **refuse** on a fork. `GET /log/checkpoint/witnessed`
+  returns the co-signed head; the per-test `GET /eval/proof/{id}` bundles the
+  witness signatures too. Now no single key — not even sealed's own audit service —
+  can rewrite witnessed history. This is Certificate Transparency's witness/gossip
+  model, for AI-safety tests.
+
+The broker bundles it all for a single test: `GET /eval/proof/{test_id}` returns the
+signed attestation **plus** a Merkle inclusion proof.
+
+**Verify it yourself — in the browser, trusting nothing.** `web/verify.html` is a
+zero-trust verifier: paste or fetch a proof and it recomputes the Ed25519
+signatures (audit **and** every independent witness), the Merkle inclusion, and the
+quorum client-side (no server call is trusted), shows a step-by-step ✓/✗, renders a
+scannable **proof receipt** QR, and has a **tamper theatre** — flip one byte (or
+forge a witness) and watch verification fail at the exact step.
+
+```bash
+make up
+curl http://localhost:8000/eval/proof/<test_id>   # a shareable, self-verifying proof
+cd ../web && python -m http.server 8080            # open http://localhost:8080/verify.html
+```
+
+Proven by `tests/test_transparency.py` (runs with no container) and the transparency
+checks in `tools/local_e2e.py`.
 
 ## Six objectives → where proven
 
