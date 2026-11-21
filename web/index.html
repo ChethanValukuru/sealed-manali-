@@ -63,6 +63,7 @@
           <span class="proof-k">SEALED's own accuracy</span>
           <span class="proof-v" id="accV" data-to="100" data-suffix="%">0</span>
           <span class="proof-ci" id="accCI">95% CI 99.9&ndash;100% &middot; 6,800 trials</span>
+          <span class="proof-live" id="accLive"></span>
         </div>
         <div class="proof-side">
           <div><span class="ps-v" id="accCaught">4,800</span>
@@ -168,6 +169,17 @@
         set("accFalse", Number(d.false_alarms).toLocaleString());
         set("accClean", Number(d.clean_records).toLocaleString());
         if (d.chain_only_accuracy != null) set("accChain", pct(d.chain_only_accuracy));
+
+        /* The synthetic chains give the rate; this line says the same
+           mutations were replayed against the REAL running ledger and caught
+           there too. It is the difference between "our test harness agrees
+           with itself" and "it holds on live data", which is the first thing
+           a sceptical reader asks. Only shown when it actually ran. */
+        var live = document.getElementById("accLive");
+        if (live && d.live_checked && d.live_entries) {
+          live.textContent = "cross-checked on a live ledger of " +
+            Number(d.live_entries).toLocaleString() + " real records";
+        }
       })
       .catch(function () { /* fallback values stay */ });
   })();

@@ -1,6 +1,6 @@
 {
  "what": "SEALED's own tamper-detection accuracy. Not the score of the AI under test.",
- "measured_at": "2026-11-21T10:17:52+05:30",
+ "measured_at": "2026-11-21T10:55:40+05:30",
  "accuracy": 1.0,
  "accuracy_ci": [
   0.99944,
@@ -13,7 +13,7 @@
  "false_alarms": 0,
  "edit_classes": 11,
  "pinpointed": 4400,
- "live_checked": false,
- "live_entries": null,
+ "live_checked": true,
+ "live_entries": 64953,
  "trials_total": 6800
 }

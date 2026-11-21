@@ -283,7 +283,7 @@ a.b { text-decoration: none; }
   position: relative;
   min-height: calc(100vh - 138px);
   display: flex; align-items: center;
-  padding: 26px 0 30px;
+  padding: 22px 0 24px;
 }
 .hero .wrap {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .88fr);
@@ -360,14 +360,14 @@ a.b { text-decoration: none; }
    share a look. */
 .proof {
   display: grid; grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr);
-  gap: 1px; margin-top: 20px;
+  gap: 1px; margin-top: 16px;
   background: var(--line); border: 1px solid var(--red-line);
   border-radius: var(--radius); overflow: hidden;
   box-shadow: 0 0 44px -30px var(--red-glow);
 }
 .proof-main {
   background: linear-gradient(160deg, var(--red-soft), var(--bg-2) 70%);
-  padding: 15px 18px 14px;
+  padding: 13px 18px 12px;
 }
 .proof-k {
   display: block; font-family: var(--mono); font-size: .6rem; font-weight: 500;
@@ -384,8 +384,15 @@ a.b { text-decoration: none; }
   display: block; font-family: var(--mono); font-size: .64rem;
   letter-spacing: .04em; color: var(--text-dim);
 }
+/* only rendered when the live cross-check actually ran, so an empty span
+   must not leave a gap */
+.proof-live {
+  display: block; font-family: var(--mono); font-size: .6rem;
+  letter-spacing: .04em; color: var(--red-ink); margin-top: 3px;
+}
+.proof-live:empty { display: none; }
 .proof-side {
-  background: var(--bg-2); padding: 13px 18px;
+  background: var(--bg-2); padding: 11px 18px;
   display: flex; flex-direction: column; justify-content: center; gap: 9px;
 }
 .proof-side > div { display: flex; align-items: baseline; gap: 10px; }
@@ -396,8 +403,8 @@ a.b { text-decoration: none; }
 }
 .ps-k { font-size: .79rem; line-height: 1.4; color: var(--text-dim); }
 .proof-note {
-  font-size: .8rem; line-height: 1.5; color: var(--muted);
-  margin: 9px 0 0; max-width: 60ch;
+  font-size: .78rem; line-height: 1.45; color: var(--muted);
+  margin: 7px 0 0; max-width: 62ch;
 }
 @media (max-width: 860px) {
   .proof { grid-template-columns: 1fr; }
