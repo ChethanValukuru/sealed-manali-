@@ -764,9 +764,18 @@
 
     var table = "";
     if (run && run.sets && run.sets.length) {
+      // Mark the WORST family only. An absolute threshold flagged four rows
+      // out of five on a short run, and a table that is mostly red carries
+      // no signal -- the point is to name the weak spot, not to shade
+      // everything that is merely below average.
+      var floor = null;
+      run.sets.forEach(function (s) {
+        if (!s.accuracy || s.accuracy.catch_rate == null) return;
+        if (floor == null || s.accuracy.catch_rate < floor) floor = s.accuracy.catch_rate;
+      });
       var body = run.sets.map(function (s) {
         var cr = s.accuracy ? s.accuracy.catch_rate : null;
-        var weak = (cr != null && cr < 0.65) ? ' class="weak"' : "";
+        var weak = (cr != null && floor != null && cr === floor) ? ' class="weak"' : "";
         return "<tr" + weak + "><td><b>" + esc(s.name) + "</b><br>" +
           '<span class="sub">' + esc(s.focus || "") + "</span></td>" +
           "<td>" + nn(s.attacks_ran) + "</td>" +
