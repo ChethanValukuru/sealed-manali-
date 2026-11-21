@@ -140,9 +140,18 @@
         var pct = function (x, dp) { return (x * 100).toFixed(dp == null ? 1 : dp) + "%"; };
         var v = document.getElementById("accV");
         if (v) {
-          v.setAttribute("data-to", String(Math.round(d.accuracy * 100)));
-          delete v.dataset.counted;
-          countUp(v, 0);
+          // Only re-animate when the measured value actually differs from the
+          // fallback already on screen. Re-running it unconditionally meant
+          // that on a deployed site -- where this fetch is a network round
+          // trip -- the headline counted up to 100%, then snapped back to 0
+          // and counted up again when the JSON landed. Caught on the live
+          // deployment, where a screenshot taken five seconds in read "5%".
+          var next = String(Math.round(d.accuracy * 100));
+          if (v.getAttribute("data-to") !== next) {
+            v.setAttribute("data-to", next);
+            delete v.dataset.counted;
+            countUp(v, 0);
+          }
         }
         var ci = document.getElementById("accCI");
         if (ci && d.accuracy_ci) {
