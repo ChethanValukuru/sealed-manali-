@@ -53,5 +53,10 @@ verifier shine locally, or against a backend behind TLS.
 
 ## Deploying the static pages
 
-Vercel: import the repo, set **Root Directory** to `web`, framework preset **Other**. No
-build command — the directory is the output.
+Vercel: import the repo and deploy it unchanged. The **root** `vercel.json` (one level up)
+sets `framework: null` and `outputDirectory: "web"`, so this folder becomes the site root
+with no build step and no dashboard settings to remember.
+
+The `vercel.json` in *this* folder is the equivalent config for the older setup where
+**Root Directory** is set to `web` by hand; Vercel reads whichever one sits at the
+configured root. Keep the headers in the two files in step if you change them.

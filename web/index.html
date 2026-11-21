@@ -31,7 +31,7 @@
   <div class="wrap">
 
     <div class="col">
-      <p class="eyebrow"><span class="live"></span> running locally</p>
+      <p class="eyebrow" id="eyebrow"><span class="live"></span> running locally</p>
 
       <h1>Test an AI's safety.<br>Then <span class="hl">prove</span> you didn't cheat.</h1>
 
@@ -43,8 +43,8 @@
       <div class="doors">
         <a class="door" href="console.html">
           <span class="dt">The console <span class="arw">&rarr;</span></span>
-          <p class="dd">Fire 500 attack prompts at a live AI, then try to secretly
-             edit the record and get caught.</p>
+          <p class="dd">Fire up to 10,000 attack prompts at a live AI, then try to
+             secretly edit the record and get caught.</p>
         </a>
         <a class="door" href="verify.html">
           <span class="dt">The verifier <span class="arw">&rarr;</span></span>
@@ -54,7 +54,7 @@
       </div>
 
       <div class="stats">
-        <div class="stat"><span class="v" data-to="500">0</span><span class="k">attack prompts</span></div>
+        <div class="stat"><span class="v" data-to="10000">0</span><span class="k">attack prompts</span></div>
         <div class="stat"><span class="v" data-to="4400">0</span><span class="k">tamper attempts</span></div>
         <div class="stat"><span class="v" data-to="100" data-suffix="%">0</span><span class="k">caught</span></div>
         <div class="stat"><span class="v" data-to="0">0</span><span class="k">false alarms</span></div>
@@ -128,6 +128,18 @@
       }
       requestAnimationFrame(step);
     });
+  })();
+</script>
+<script>
+  /* The eyebrow states where this copy is running. "running locally" is only
+     true on a dev box; on a public URL the console has no backend to reach,
+     but the verifier is pure client-side and works anywhere. */
+  (function () {
+    var el = document.getElementById("eyebrow");
+    if (!el) return;
+    var h = location.hostname;
+    var local = h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "";
+    if (!local) el.innerHTML = '<span class="live"></span> live &mdash; the verifier runs in your browser';
   })();
 </script>
 <script>

@@ -99,9 +99,34 @@ python -m http.server 8080           # then open http://localhost:8080
 Three pages: a one-screen landing page, a live console (run a test, get the signed proof,
 try to tamper with it, download a findings report), and a **zero-trust proof verifier**
 (`verify.html`) that re-checks a proof's signatures and Merkle inclusion entirely in your
-browser, with a live tamper demo. It deploys on **Vercel** with
-**Root Directory = `web`** and framework preset **Other**. To use the live console
-against a running system, start Option 1 or 2 and press **Connect**.
+browser, with a live tamper demo. To use the live console against a running system, start
+Option 1 or 2 and press **Connect**.
+
+---
+
+## Deploying the public link (Vercel)
+
+The repo deploys as-is — **import it and press Deploy, change nothing**. The root
+[`vercel.json`](vercel.json) sets framework `null` (Other) and `outputDirectory: "web"`,
+so Vercel serves the `web/` folder as the site root with no build step, and
+[`.vercelignore`](.vercelignore) keeps the backend, datasets and docs out of the upload.
+
+| Setting | Value | Why |
+|---|---|---|
+| Framework Preset | Other | no build system; `vercel.json` already sets this |
+| Root Directory | leave as the repo root | `outputDirectory` points Vercel at `web/` |
+| Build Command | leave empty | nothing to build, it is plain static files |
+| Output Directory | leave empty | `vercel.json` sets it to `web` |
+
+From a terminal instead: `npx vercel --prod` in the project root.
+
+**What the public URL can and cannot do.** The landing page and the **verifier** work
+anywhere — the verifier recomputes signatures and Merkle inclusion in the visitor's
+browser, and `web/sample-proof.json` lets anyone check a real proof with no backend at
+all. The **live console** needs a running sealed system; a page served over HTTPS cannot
+call an HTTP backend on `localhost` (browsers block mixed content), so drive the console
+from the local demo (Option 1) and use the deployed link for the landing page and the
+verifier.
 
 ---
 

@@ -1,0 +1,9 @@
+# Only web/ is served (vercel.json sets outputDirectory). Everything below is
+# backend, docs and demo tooling - no need to upload it on every deploy.
+sealed/
+docs/
+.github/
+.claude/
+run-local.py
+serve-web.js
+*.bat
