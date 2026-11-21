@@ -18,7 +18,7 @@ Built **phase by phase, in order**. Each phase has a hard exit criterion — do 
       both leaks (contamination + disclosure), `make demo-secure` shows them contained.
 - [x] **Phase 4 — Harden, honesty & polish** (M5 + M7 + dashboard).
       Exit: `tests/test_access.py` green (tokens, gating, monitor); `THREAT_MODEL.md` complete;
-      `make latency` reports overhead; `make dashboard` serves the console.
+      `make latency` reports overhead; the console is `web/console.html` (served by `serve-web.js`).
 
 **Definition of done:** all six objective tests green, both demo modes work, `THREAT_MODEL.md`
 complete, clean deploy on a fresh VM via `make up`. (Runtime run pending on a Linux host.)
@@ -47,7 +47,7 @@ complete, clean deploy on a fresh VM via `make up`. (Runtime run pending on a Li
   withheld until conclude), timing normalization (`timing.py`, `TIMING_QUANTUM_MS`), one-way `monitor`
   service (audit-net only; writes alerts, tenants can't reach it). Proven by `tests/test_access.py`.
 - **Honesty + perf (Phase 4 / M7):** `THREAT_MODEL.md` (Obj 06); `tests/test_latency.py` +
-  `make latency` report isolation overhead (Obj 01). Minimal `dashboard/index.html` (`make dashboard`).
+  `make latency` report isolation overhead (Obj 01). Live console at `web/console.html` (served by `serve-web.js` from the repo root).
 
 ## Verification status (2026-11-08)
 

@@ -172,7 +172,7 @@ services:
     environment:
       - BROKER_URL=http://broker:8000
       - ATTACKS_PATH=/data/advbench.json            # real AdvBench if fetched, else sample
-      - SUITE_PATH=/data/attack_suite.json          # the 500-prompt suite (5 sets x 100)
+      - SUITE_PATH=/data/attack_suite.json          # the attack suite (5 sets, up to 2,000 each)
       - CAP_TOKEN=${RED_TOKEN:-red-cap-token-dev}   # red holds ONLY its own token
     volumes:
       - ./datasets:/data:ro

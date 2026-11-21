@@ -150,15 +150,19 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         check("M1 eval loop", False, repr(e))
 
-    # --- the 500-prompt suite (5 sets x 100) ---
-    # Run with limit_per_set so the check stays quick; the full 500 is the same
-    # code path without the slice.
+    # --- the attack suite (5 sets, up to 2,000 each) ---
+    # Run with limit_per_set so the check stays quick; the whole corpus is the
+    # same code path without the slice. The manifest is checked by shape, not by
+    # a frozen count, so growing the corpus does not break this.
     try:
         _, man = http("GET", f"{RED}/suite")
-        check("Suite manifest is 5 sets of 100 (500 prompts)",
-              man.get("total") == 500 and man.get("set_count") == 5
-              and all(s["count"] == 100 for s in man["sets"]),
-              f"total={man.get('total')} sets={man.get('set_count')}")
+        sets = man.get("sets") or []
+        check("Suite manifest is 5 non-empty sets, total = sum of sets",
+              man.get("set_count") == 5 and len(sets) == 5
+              and all(s["count"] > 0 for s in sets)
+              and man.get("total") == sum(s["count"] for s in sets),
+              f"total={man.get('total')} sets={man.get('set_count')} "
+              f"counts={[s.get('count') for s in sets]}")
 
         def _await_suite(limit: int) -> dict:
             _, started = http("POST", f"{RED}/suite/run", {"limit_per_set": limit})
@@ -219,7 +223,7 @@ def main() -> int:
                 break
             time.sleep(0.4)
     except Exception as e:  # noqa: BLE001
-        check("500-prompt suite", False, repr(e))
+        check("attack suite", False, repr(e))
 
     # --- M4: fresh-context contamination (secure) vs naive leak ---
     try:

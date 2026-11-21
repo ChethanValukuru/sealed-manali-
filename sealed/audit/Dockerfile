@@ -3,7 +3,7 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY chain.py log.py verify.py tamper_demo.py ./
+COPY aat.py chain.py log.py merkle.py verify.py tamper_demo.py ./
 
 # Audit runs as root ONLY to own the data volume; cap_drop ALL + no-new-privileges
 # + read-only rootfs (compose) remove the privileges that root would otherwise
