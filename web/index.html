@@ -211,7 +211,7 @@
     if (!el) return;
     var h = location.hostname;
     var local = h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "";
-    if (!local) el.innerHTML = '<span class="live"></span> live &mdash; the verifier runs in your browser';
+    if (!local) el.innerHTML = '<span class="live"></span> live: the verifier runs in your browser';
   })();
 </script>
 <script>
