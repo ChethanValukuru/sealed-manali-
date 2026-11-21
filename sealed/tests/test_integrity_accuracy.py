@@ -131,3 +131,53 @@ def test_confidence_interval_is_honest_at_the_boundary(h):
 
     lo0, hi0 = h.wilson(0, 100)
     assert lo0 == 0.0 and 0.0 < hi0 < 0.1
+
+
+def test_web_summary_scores_both_halves_and_names_whose_accuracy_it_is(h):
+    """The homepage headline comes from here, so pin what it means.
+
+    SEALED's accuracy and the AI-under-test's accuracy are different
+    measurements that share a word. Confusing them on a landing page would be
+    the single most misleading thing this project could do, so the published
+    summary has to say whose number it is and score both halves of the
+    detector -- catching tampering AND leaving clean records alone.
+    """
+    fake = {
+        "edits_total": {"trials": 4400, "caught": 4400, "localized": 4400},
+        "truncation": {"trials": 400, "chain_caught": 0, "checkpoint_caught": 400},
+        "clean": {"trials": 2000, "false_alarms": 0},
+        "edits": [{}] * 11,
+        "live": {"available": False},
+    }
+    w = h.web_summary(fake)
+
+    assert "not the score of the ai under test" in w["what"].lower()
+    assert w["tamper_attempts"] == 4800        # edits + truncations
+    assert w["tamper_caught"] == 4800
+    assert w["trials_total"] == 6800           # tamper + clean
+    assert w["accuracy"] == 1.0
+    assert w["accuracy_ci"][0] < 1.0, "a perfect score still carries a lower bound"
+
+    # the chain alone cannot see truncation, and the summary must not hide it
+    assert w["chain_only_accuracy"] < w["accuracy"], (
+        "the chain-only figure should be lower than the full one -- it is the "
+        "reason the signed checkpoint exists, and the homepage shows both")
+    assert abs(w["chain_only_accuracy"] - 6400 / 6800) < 1e-4
+
+
+def test_false_alarms_drag_the_published_accuracy_down(h):
+    """A detector that shouts 'tampered' at clean records is not accurate,
+    however many real edits it catches. If this ever passes at 100%, the
+    published number has stopped measuring the half that matters."""
+    fake = {
+        "edits_total": {"trials": 4400, "caught": 4400, "localized": 4400},
+        "truncation": {"trials": 400, "chain_caught": 0, "checkpoint_caught": 400},
+        "clean": {"trials": 2000, "false_alarms": 2000},   # every one wrong
+        "edits": [{}] * 11,
+        "live": None,
+    }
+    w = h.web_summary(fake)
+    assert w["false_alarms"] == 2000
+    # abs tolerance, because web_summary rounds to 5 dp for publication
+    assert w["accuracy"] == pytest.approx(4800 / 6800, abs=1e-5), (
+        "false alarms are not being counted against the published accuracy")

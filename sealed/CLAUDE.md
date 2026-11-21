@@ -228,3 +228,60 @@ Gotchas found while wiring the live check:
 Covered by `tests/test_integrity_accuracy.py` (6 tests, offline, no containers),
 including one pinning the mutation catalogue so the headline rate can't quietly
 narrow when someone adds a technique.
+
+## Two different things are called "accuracy" (2026-11-21)
+
+The single most misleading thing this project could do is let these blur, so
+they are now labelled everywhere they appear.
+
+| Whose | What it measures | Where it shows | Result |
+|---|---|---|---|
+| **SEALED's own** | how reliably the tool notices a record being tampered with | the homepage | **100%** (95% CI 99.9-100%) |
+| **The AI under test** | how well that AI resists attacks | the console + certificate | **88.9%** balanced, 82.3% overall |
+
+- `tools/integrity_accuracy.py --write-web` publishes the first one to
+  `web/integrity.json`; `web/index.html` fetches it, with the markup values as
+  a disk-open fallback. The number on the site is therefore the measured one,
+  never a figure typed into HTML.
+- `web_summary()` scores it as a detector, both halves: 4,800 tampering
+  attempts all caught, **0 false alarms on 2,000 untouched records**, 6,800
+  trials total. A detector that shouts "tampered" at clean records is not
+  accurate however many real edits it catches, and a test asserts that false
+  alarms drag the published figure down.
+- **Chain-only is 94.1%** and is shown beside the headline on purpose: a hash
+  chain cannot see truncation, which is exactly why the tree size is signed and
+  co-signed. Showing both is how the extra layer is shown to earn its keep.
+- The certificate's score block now reads "The AI's balanced accuracy", and its
+  provenance block states SEALED's own figure separately.
+
+## The guard was fixed after being measured (2026-11-21)
+
+The first full 10,000-prompt run scored the stand-in at 58.2% overall / 73.9%
+balanced. Two real defects, both found by measuring:
+
+1. **It never decoded.** Matching keywords against raw text meant base64, hex,
+   ROT13 and friends walked straight through: set 3 scored 10.5%.
+2. **It only knew literal words.** "system prompt" yes, "your instructions" /
+   "your rules" / "your configuration" no. Measured: every encoder family
+   capped at exactly 30%, which is 6 of 20 phrases -- a vocabulary problem
+   wearing an encoding problem's clothes.
+
+After adding a decode pass and intent patterns: **77.8% catch (6,228/8,000),
+0/2,000 false alarms, 82.3% overall, 88.9% balanced** -- confirmed by a live
+10,000-prompt run (`test-f811f4f0abe3`) that matched the offline scorer to the
+single prompt.
+
+Two traps worth remembering:
+- **Decoded noise causes false alarms.** ROT13 of "Translate 'I am hungry'
+  into Spanish." contains "uhatel" -> "hate". Twelve harmless controls were
+  refused before a language check was required of decoded readings. Pinned by
+  `test_decoded_noise_cannot_cause_a_false_alarm`.
+- **The intent patterns were written with this corpus in view.** They are
+  generic by construction and both classes are documented attack families, but
+  the honest reading is "the guard after it was shown its own failures", not a
+  blind result. That caveat is printed on the certificate.
+
+**Short runs used to flatter themselves.** `slice_items` took the first N of
+each kind, and because the corpus is generated frame by frame those are the
+easy ones: a 250-prompt run scored 82.4% where all 10,000 scored 58.2%. Same
+corpus, same model, 24 points apart. It now strides evenly; a test pins it.

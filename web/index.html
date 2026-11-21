@@ -53,12 +53,29 @@
         </a>
       </div>
 
-      <div class="stats">
-        <div class="stat"><span class="v" data-to="10000">0</span><span class="k">attack prompts</span></div>
-        <div class="stat"><span class="v" data-to="4400">0</span><span class="k">tamper attempts</span></div>
-        <div class="stat"><span class="v" data-to="100" data-suffix="%">0</span><span class="k">caught</span></div>
-        <div class="stat"><span class="v" data-to="0">0</span><span class="k">false alarms</span></div>
+      <!-- SEALED's OWN accuracy, not the score of the AI it tests. Two very
+           different measurements both get called "accuracy", so this one says
+           whose it is. Every figure is read from web/integrity.json, written
+           by sealed/tools/integrity_accuracy.py; the values in the markup are
+           the fallback for when the page is opened without a server. -->
+      <div class="proof">
+        <div class="proof-main">
+          <span class="proof-k">SEALED's own accuracy</span>
+          <span class="proof-v" id="accV" data-to="100" data-suffix="%">0</span>
+          <span class="proof-ci" id="accCI">95% CI 99.9&ndash;100% &middot; 6,800 trials</span>
+        </div>
+        <div class="proof-side">
+          <div><span class="ps-v" id="accCaught">4,800</span>
+               <span class="ps-k">tampering attempts, every one caught</span></div>
+          <div><span class="ps-v" id="accFalse">0</span>
+               <span class="ps-k">false alarms in <span id="accClean">2,000</span> untouched records</span></div>
+          <div><span class="ps-v" id="accChain">94.1%</span>
+               <span class="ps-k">without the signed checkpoint, which is why it exists</span></div>
+        </div>
       </div>
+      <p class="proof-note">That is how reliably <strong>sealed</strong> notices
+         someone editing a record. It is not the score of the AI being tested,
+         which the console reports separately.</p>
     </div>
 
     <div class="viz" aria-hidden="true">
@@ -110,24 +127,79 @@
 </footer>
 
 <script>
-  // Count the hero stats up once, on load. Skipped entirely when the
-  // visitor has asked for less motion -- the final number is what matters.
+
+  /* Read the measured figures. The markup carries the last known values as a
+     fallback, so opening index.html straight off disk still shows something
+     true rather than zeroes -- but whenever the file is reachable, the page
+     shows what was actually measured instead of what someone typed. */
   (function () {
-    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    document.querySelectorAll(".stat .v").forEach(function (el, i) {
-      var to = Number(el.getAttribute("data-to"));
-      var suffix = el.getAttribute("data-suffix") || "";
-      if (reduce || to === 0) { el.textContent = to.toLocaleString() + suffix; return; }
-      var start = null, dur = 1100 + i * 120;
-      function step(t) {
-        if (start === null) start = t;
-        var p = Math.min(1, (t - start) / dur);
-        var eased = 1 - Math.pow(1 - p, 3);          // ease-out cubic
-        el.textContent = Math.round(to * eased).toLocaleString() + suffix;
-        if (p < 1) requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
-    });
+    fetch("integrity.json", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || d.accuracy == null) return;
+        var pct = function (x, dp) { return (x * 100).toFixed(dp == null ? 1 : dp) + "%"; };
+        var v = document.getElementById("accV");
+        if (v) {
+          v.setAttribute("data-to", String(Math.round(d.accuracy * 100)));
+          delete v.dataset.counted;
+          countUp(v, 0);
+        }
+        var ci = document.getElementById("accCI");
+        if (ci && d.accuracy_ci) {
+          // one % sign at the end, not two: "99.9-100%", not "99.9%-100.0%"
+          ci.textContent = "95% CI " + (d.accuracy_ci[0] * 100).toFixed(1) +
+            "\u2013" + pct(d.accuracy_ci[1]) + " \u00b7 " +
+            Number(d.trials_total).toLocaleString() + " trials";
+        }
+        var set = function (id, text) {
+          var el = document.getElementById(id);
+          if (el) el.textContent = text;
+        };
+        set("accCaught", Number(d.tamper_caught).toLocaleString());
+        set("accFalse", Number(d.false_alarms).toLocaleString());
+        set("accClean", Number(d.clean_records).toLocaleString());
+        if (d.chain_only_accuracy != null) set("accChain", pct(d.chain_only_accuracy));
+      })
+      .catch(function () { /* fallback values stay */ });
+  })();
+
+  /* Count the hero numbers up on load.
+
+     The final value is written FIRST, before any animation starts. That is
+     not belt-and-braces, it is the whole point: requestAnimationFrame is
+     throttled or paused in a background tab, so a page that only ever sets
+     the number from inside the rAF loop can render its headline accuracy as
+     "0" to anyone who opened it in a background tab. Observed, not
+     theoretical. The animation then overwrites it frame by frame; if rAF
+     never fires, the correct number is already on screen.
+
+     The counter is also re-runnable, because integrity.json arrives after
+     first paint and may change the target. */
+  function countUp(el, i) {
+    var to = Number(el.getAttribute("data-to"));
+    var suffix = el.getAttribute("data-suffix") || "";
+    if (!isFinite(to)) return;
+
+    el.textContent = to.toLocaleString() + suffix;   // correct value, now
+
+    var reduce = window.matchMedia &&
+                 window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || to === 0 || el.dataset.counted === "1") return;
+    el.dataset.counted = "1";
+
+    var start = null, dur = 1100 + (i || 0) * 120;
+    function step(t) {
+      if (start === null) start = t;
+      var p = Math.min(1, (t - start) / dur);
+      var eased = 1 - Math.pow(1 - p, 3);            // ease-out cubic
+      el.textContent = Math.round(to * eased).toLocaleString() + suffix;
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  (function () {
+    document.querySelectorAll(".proof-v, .stat .v").forEach(countUp);
   })();
 </script>
 <script>

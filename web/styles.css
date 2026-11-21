@@ -302,8 +302,8 @@ a.b { text-decoration: none; }
   display: inline-flex; align-items: center; gap: 9px;
   font-family: var(--mono); font-size: .72rem; font-weight: 500;
   letter-spacing: .16em; text-transform: uppercase;
-  color: var(--red-ink); margin: 0 0 22px;
-  padding: 6px 14px 6px 11px; border-radius: 999px;
+  color: var(--red-ink); margin: 0 0 16px;
+  padding: 5px 13px 5px 10px; border-radius: 999px;
   background: var(--red-softer); border: 1px solid var(--red-line);
 }
 .eyebrow .live {
@@ -315,7 +315,7 @@ a.b { text-decoration: none; }
   70%  { box-shadow: 0 0 0 10px rgba(255,10,51,0); }
   100% { box-shadow: 0 0 0 0 rgba(255,10,51,0); }
 }
-.hero h1 { margin-bottom: 18px; font-size: clamp(2.3rem, 4.4vw, 3.9rem); }
+.hero h1 { margin-bottom: 14px; font-size: clamp(2.1rem, 4vw, 3.5rem); }
 .hero h1 .hl { color: var(--red); position: relative; white-space: nowrap; }
 .hero h1 .hl::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: .06em; height: .09em;
@@ -324,7 +324,7 @@ a.b { text-decoration: none; }
   transform-origin: left; animation: wipe .9s .55s var(--ease) both;
 }
 @keyframes wipe { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-.hero .lead { margin-bottom: 26px; font-size: clamp(1rem, 1.15vw, 1.12rem); max-width: 56ch; }
+.hero .lead { margin-bottom: 18px; font-size: clamp(.96rem, 1.1vw, 1.06rem); max-width: 56ch; }
 
 /* stat strip */
 .stats {
@@ -351,6 +351,57 @@ a.b { text-decoration: none; }
   display: block; margin-top: 5px;
   font-family: var(--mono); font-size: .66rem; font-weight: 500;
   letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+}
+
+/* ---- the proof badge ----
+   SEALED's own accuracy, sized like the claim it is. Deliberately NOT the
+   same component as the AI's score in the console: two different numbers
+   both called accuracy is the easiest way to mislead someone, so they do not
+   share a look. */
+.proof {
+  display: grid; grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr);
+  gap: 1px; margin-top: 20px;
+  background: var(--line); border: 1px solid var(--red-line);
+  border-radius: var(--radius); overflow: hidden;
+  box-shadow: 0 0 44px -30px var(--red-glow);
+}
+.proof-main {
+  background: linear-gradient(160deg, var(--red-soft), var(--bg-2) 70%);
+  padding: 15px 18px 14px;
+}
+.proof-k {
+  display: block; font-family: var(--mono); font-size: .6rem; font-weight: 500;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--red);
+}
+.proof-v {
+  display: block; font-family: var(--sans);
+  font-size: clamp(2.6rem, 5.2vw, 3.7rem); font-weight: 700;
+  letter-spacing: -.045em; line-height: 1.02; color: #fff;
+  font-variant-numeric: tabular-nums; margin: 2px 0 2px;
+  text-shadow: 0 0 38px var(--red-glow);
+}
+.proof-ci {
+  display: block; font-family: var(--mono); font-size: .64rem;
+  letter-spacing: .04em; color: var(--text-dim);
+}
+.proof-side {
+  background: var(--bg-2); padding: 13px 18px;
+  display: flex; flex-direction: column; justify-content: center; gap: 9px;
+}
+.proof-side > div { display: flex; align-items: baseline; gap: 10px; }
+.ps-v {
+  flex: none; min-width: 62px; font-family: var(--sans); font-size: 1.02rem;
+  font-weight: 700; color: var(--red); font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+.ps-k { font-size: .79rem; line-height: 1.4; color: var(--text-dim); }
+.proof-note {
+  font-size: .8rem; line-height: 1.5; color: var(--muted);
+  margin: 9px 0 0; max-width: 60ch;
+}
+@media (max-width: 860px) {
+  .proof { grid-template-columns: 1fr; }
+  .proof-side { padding: 14px 18px 16px; }
 }
 
 /* the hero's right-hand visual */
@@ -402,7 +453,7 @@ a.b { text-decoration: none; }
 }
 
 /* two doors, inside the hero so the page stays one screen */
-.doors { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 4px; }
+.doors { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 2px; }
 .door {
   position: relative; overflow: hidden;
   display: block; padding: 18px 20px;

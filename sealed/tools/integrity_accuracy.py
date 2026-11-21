@@ -42,6 +42,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import copy
 import json
 import math
@@ -378,12 +379,73 @@ def run_live_check(rng: random.Random, atk, per: int = 20) -> dict | None:
 
 # ------------------------------------------------------------------- report
 
+
+def web_summary(r: dict) -> dict:
+    """SEALED's OWN accuracy, reduced to what the homepage shows.
+
+    This is not the score of the AI being tested. It is how reliably SEALED
+    itself notices when somebody tampers with a record - the question "can I
+    trust this tool", not "is that model safe". Two completely different
+    measurements that both get called accuracy, which is exactly why the
+    homepage labels this one.
+
+    Scored the way any detector is scored, both halves together:
+
+        detected   a tampered record, correctly flagged
+        missed     a tampered record, passed as clean
+        clean ok   an untouched record, correctly passed
+        false alarm an untouched record, wrongly flagged
+
+    The chain-only figure is reported beside the headline on purpose. A hash
+    chain cannot see truncation - a shortened chain is still a valid chain -
+    so the chain alone scores lower. That gap is the entire reason the tree
+    size and root are signed and co-signed by independent witnesses, and
+    showing both numbers is how you demonstrate the layer earns its keep.
+    """
+    e = r["edits_total"]
+    t = r["truncation"]
+    c = r["clean"]
+
+    tamper_trials = e["trials"] + t["trials"]
+    clean_trials = c["trials"]
+    total = tamper_trials + clean_trials
+    clean_ok = clean_trials - c["false_alarms"]
+
+    full_detected = e["caught"] + t["checkpoint_caught"]
+    chain_detected = e["caught"] + t["chain_caught"]
+
+    full = (full_detected + clean_ok) / total if total else 0.0
+    chain = (chain_detected + clean_ok) / total if total else 0.0
+
+    return {
+        "what": "SEALED's own tamper-detection accuracy. Not the score of the "
+                "AI under test.",
+        "measured_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "accuracy": round(full, 5),
+        "accuracy_ci": [round(x, 5) for x in wilson(full_detected + clean_ok, total)],
+        "chain_only_accuracy": round(chain, 5),
+        "tamper_attempts": tamper_trials,
+        "tamper_caught": full_detected,
+        "clean_records": clean_trials,
+        "false_alarms": c["false_alarms"],
+        "edit_classes": len(r.get("edits", [])),
+        "pinpointed": e.get("localized"),
+        "live_checked": bool((r.get("live") or {}).get("available")),
+        "live_entries": (r.get("live") or {}).get("entries"),
+        "trials_total": total,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Measure SEALED's tamper-detection accuracy.")
     ap.add_argument("--trials", type=int, default=200,
                     help="trials per mutation class (default 200)")
     ap.add_argument("--seed", type=int, default=20261120)
     ap.add_argument("--json", default="", help="also write raw results here")
+    ap.add_argument("--write-web", action="store_true",
+                    help="publish a summary to web/integrity.json for the "
+                         "homepage, so the number on the site is the measured "
+                         "one rather than a figure somebody typed in")
     ap.add_argument("--live", action="store_true",
                     help="also cross-check against the running audit service")
     args = ap.parse_args()
@@ -459,6 +521,12 @@ def main() -> int:
     if args.json:
         Path(args.json).write_text(json.dumps(results, indent=2), encoding="utf-8")
         print(f"\n  raw results -> {args.json}")
+
+    if args.write_web:
+        out = Path(__file__).resolve().parents[2] / "web" / "integrity.json"
+        out.write_text(json.dumps(web_summary(results), indent=1),
+                       encoding="utf-8")
+        print(f"  homepage summary -> {out}")
 
     ok = (tc == tt and clean["false_alarms"] == 0
           and trunc["checkpoint_caught"] == trunc["trials"])

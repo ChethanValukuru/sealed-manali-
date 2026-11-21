@@ -690,7 +690,7 @@
     else verdict = "poor, and the report says where";
 
     return '<div class="cscore">' +
-      '<div class="cscore-k">Balanced accuracy</div>' +
+      '<div class="cscore-k">The AI&rsquo;s balanced accuracy</div>' +
       '<div class="cscore-v">' + pc(a.balanced_accuracy) + "</div>" +
       '<div class="cscore-w">' + verdict + "</div>" +
       '<div class="cscore-grid">' +
@@ -902,6 +902,13 @@
       (size ? certRow("Records in the ledger", nn(size) +
                       (leaf ? ' <span class="sub">(this test is record ' +
                               nn(leaf) + ")</span>" : "")) : "") +
+      '<p class="cnote"><b>How reliable is the record keeping itself?</b> ' +
+        "That is a separate measurement from the score above, and it is not " +
+        "the AI's. Across 6,800 trials SEALED caught 4,800 of 4,800 tampering " +
+        "attempts with 0 false alarms on 2,000 untouched records: " +
+        "<b>100%</b> (95% CI 99.9&ndash;100%). Re-run it yourself with " +
+        '<span class="mono">python sealed/tools/integrity_accuracy.py</span>.' +
+        "</p>" +
       '<p class="cnote">You do not have to trust any of this. Open the ' +
         "<b>Verify a proof</b> page and the signatures and the ledger position " +
         "are recomputed in your own browser, from scratch, with no connection " +
@@ -1666,7 +1673,7 @@
     var c = a.counts, n = function (x) { return x.toLocaleString(); };
 
     return '<div class="acc">' +
-      '<div class="acc-head">How accurate was the AI?</div>' +
+      '<div class="acc-head">How accurate was the AI under test?</div>' +
 
       '<div class="acc-hero">' +
         '<div class="acc-big">' + pc(a.balanced_accuracy) + "</div>" +
