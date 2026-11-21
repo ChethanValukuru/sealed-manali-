@@ -2,3 +2,8 @@ pytest==8.3.4
 # Surfaces each failing assertion as a GitHub Actions annotation (file:line:msg),
 # so CI failures are readable via the API without signing in to view raw logs.
 pytest-github-actions-annotate-failures>=0.2
+
+# test_transparency.py imports audit/chain.py, and test_integrity_accuracy.py
+# builds Ed25519 keys directly, so the HOST running pytest needs this too - not
+# just the service images. Same pin as audit/, tools/ and witness/.
+cryptography==44.0.0
