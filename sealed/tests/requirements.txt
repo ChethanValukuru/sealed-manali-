@@ -3,11 +3,9 @@ pytest==8.3.4
 # so CI failures are readable via the API without signing in to view raw logs.
 pytest-github-actions-annotate-failures>=0.2
 
-# The host running pytest imports service modules directly, so it needs their
-# deps too - not just the service images. test_transparency.py imports
-# audit/chain.py (cryptography) and witness/witness.py, which pulls in FastAPI
-# at module scope even though the test only calls a pure helper on it.
-# test_integrity_accuracy.py builds Ed25519 keys directly. Pins match audit/,
-# tools/ and witness/. Check with: pytest tests --collect-only
-cryptography==44.0.0
-fastapi==0.115.6
+# The host running pytest imports the service modules directly - audit/chain.py,
+# witness/witness.py, tools/integrity_accuracy.py, tenants/model/wrapper.py - so
+# it needs their dependencies too, not just the service images. Tracking the
+# harness file keeps the two from drifting apart again (that drift broke CI with
+# cryptography, then fastapi, then httpx, one run at a time).
+-r ../tools/requirements.txt
