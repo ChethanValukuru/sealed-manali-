@@ -15,3 +15,10 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# Test / tooling caches
+.pytest_cache/
+.ruff_cache/
+
+# Generated outputs (rebuild with: python sealed/tools/suite_report.py)
+# (docs/SEALED-accuracy-report.pdf is committed on purpose - it is demo evidence)

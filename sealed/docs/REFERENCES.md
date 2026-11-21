@@ -61,3 +61,37 @@ testing rather than a claim — e.g. the EU AI Act's conformity/record-keeping
 obligations and the NIST AI Risk Management Framework's measure/manage functions.
 `sealed`'s hash-chained, signed audit log and per-evaluation attestation are built for
 exactly that: proving a safety finding was produced in a sound environment.
+
+## Transparency-log lineage (the Evaluation Transparency Log)
+
+`sealed`'s Evaluation Transparency Log is a deliberate transplant of a proven
+construction into the AI-safety-testing domain. The prior art it builds on:
+
+- **RFC 6962 — Certificate Transparency.** The Merkle-tree log, Signed Tree Head,
+  and inclusion/consistency proofs come straight from CT, the system that keeps the
+  web PKI honest. `sealed` uses the same leaf/node hashing and proof algorithms.
+- **Sigstore / Rekor** and **[transparency.dev](https://transparency.dev)** (Google's
+  Trillian) — append-only Merkle transparency logs for signed software artifacts and
+  attestations, serving inclusion and consistency proofs. Same pattern, applied here
+  to evaluation attestations instead of software.
+- **IETF Agent Audit Trail** (`draft-sharif-agent-audit-trail`, Oct 2026) — a
+  standards-track JSON logging format for autonomous AI systems: mandatory identity /
+  principal / action / outcome / trust-level fields, a SHA-256 hash chain over RFC 8785
+  (JCS) canonical bytes, and an **optional §6.4 Merkle batch-anchoring mode** with
+  logarithmic inclusion proofs. `sealed`'s `GET /log/aat` emits this format, and the
+  signed Merkle checkpoint *is* that batch anchor. The draft is written to the EU AI
+  Act's record-keeping mandate for high-risk AI systems.
+
+- **Witnessing / gossip** — Certificate Transparency's defence against a log that
+  signs two different histories (equivocation) is a set of **witnesses** that co-sign
+  Signed Tree Heads only after checking consistency, plus gossip between clients.
+  Sigstore runs **log witnesses** on Rekor, and the C2SP **tlog-witness** spec
+  standardises the protocol. `sealed`'s `witness/` service applies exactly this:
+  independent co-signers that refuse a forked ledger, so a single compromised key
+  can't rewrite witnessed history — the mitigation recorded in `THREAT_MODEL.md`.
+
+No AI red-teaming tool in the surveyed landscape (Garak, PyRIT, Promptfoo, Giskard,
+DeepTeam, Mindgard, …) publishes evaluations to a verifiable, witness-co-signed
+transparency log — they produce reports, not independently checkable proofs. That is
+`sealed`'s novel wedge.
+(Transparency-log landscape surveyed Nov 2026; IETF draft retrieved via `ietf.org`.)

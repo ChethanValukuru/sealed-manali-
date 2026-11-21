@@ -1,46 +1,57 @@
-# sealed — web frontend
+# sealed — the web front end
 
-A zero-build static site: a clean explainer plus a live **console** that connects to
-*your own* running `sealed` backend. It shows real data or an honest
-"not connected" state — there are **no fabricated numbers** anywhere.
+A zero-build static site. Everything it shows is read from a **running sealed system** —
+there are no fabricated numbers anywhere, and when the backend is down it says so rather
+than inventing a result.
 
-- `index.html` — overview (problem, architecture, objectives, threat model)
-- `walkthrough.html` — a 1-minute animated explainer (doubles as a presentation:
-  arrow keys to move, space to pause/play, F11 for fullscreen)
-- `console.html` + `app.js` — live console (protections, activity, eval runs) plus
-  a **"Proof you can check"** panel: get a signed attestation, verify it, download it,
-  run a live tamper-detection demo, and export a one-page **findings report (PDF)**
-  stamped with the attestation (generated in-browser via jsPDF)
-- `styles.css` — peaceful sage/stone theme, light + dark
-- `vercel.json` — static hosting with a few safe headers
+## The pages
 
-## Deploy on Vercel
+There are **three pages and nothing else**. The guided story page and the animated
+walkthrough were removed in November 2026: they told the judges what happens instead of
+letting them do it, and the console does the same job with real data.
 
-1. Import the GitHub repo into Vercel.
-2. **Root Directory:** `web`
-3. **Framework Preset:** Other (no build command; output is the directory itself).
-4. Deploy. That's it — it's static.
+| File | What it is |
+|---|---|
+| `console.html` + `app.js` | **Start here.** The live control panel, in three numbered steps. Connects by itself. Run a test or type your own attack, get a signed receipt whose every line opens to show its evidence, then try to break the record. A looping diagram in the right-hand column illustrates whichever step is in view. Ledger tools, the memory-contamination check and the addresses sit under **Advanced tools**. The live protections readout and the activity feed were removed in November 2026 to make room for the step diagram; `/health/isolation` still reports them and `renderWalls()` in `app.js` still renders them if a `#walls` element is put back. |
+| `verify.html` + `verify.js` | The zero-trust proof checker. Re-computes the signatures and the Merkle inclusion **in your browser**, trusting nothing the server says. Includes a tamper theatre and a QR proof receipt. |
+| `index.html` | A one-screen landing page: the idea in a sentence, and two doors — the console and the verifier. Deliberately fits in the viewport with nothing to scroll past. |
+| `styles.css` | The shared design system. Black, red and white; one theme, no toggle. Animations are transform/opacity only and switch off under `prefers-reduced-motion`. |
+| `diagram-solution.jpg` | The architecture diagram embedded in the top-level `README.md`. |
+| `sample-proof.json` | A **real** captured proof bundle. Paste it into `verify.html` to demo the verifier with no backend running — the venue-wifi fallback. |
+| `vendor/` | `noble-ed25519.js` (signature checking) and `qrcode.min.js` (proof receipts). Vendored so the verifier works offline. |
+| `vercel.json` | Static hosting config with a few safe headers. |
 
-## Run locally
+## Running it
 
-Any static server works (the console calls the backend from the browser):
+From the project root (one level up):
 
 ```bash
-cd web
-python -m http.server 8080      # then open http://localhost:8080
+node serve-web.js
 ```
 
-## Connecting the console to a backend
+It prints the address — normally `http://localhost:8080`, stepping to the next free port if
+that one is taken. No Python, no build step, no dependencies.
 
-The console calls the broker / audit / red services directly from the browser, so:
+To make the pages show live data, start the backend in another window:
 
-- Start the backend: from `../sealed`, run `make up` (defaults: broker `:8000`,
-  audit `:8001`, red `:8004`). The backend already sends permissive CORS headers.
-- In the console's **Backend** panel, point the three URLs at your backend and
-  press **Connect**. The defaults are `localhost`.
+```bash
+python run-local.py
+```
 
-**Mixed content note:** a site served over **HTTPS** (as on Vercel) cannot call an
-**HTTP** backend — browsers block it. For a live console against a remote backend,
-serve that backend over HTTPS (or a reverse proxy with TLS). Running the console
-locally against `localhost` has no such restriction, so the explainer is the part
-meant for the public Vercel URL; the console shines locally or against a TLS backend.
+Add `--real` to put a genuine local model behind it instead of the built-in stand-in.
+See [`../docs/DEMO.md`](../docs/DEMO.md) for which mode to use when.
+
+## Connecting to a backend elsewhere
+
+The pages call the broker (`:8000`), audit (`:8001`) and red (`:8004`) services straight
+from the browser, and default to `localhost`. To point them somewhere else, open
+**Advanced tools** at the bottom of the console and edit the three addresses.
+
+**Mixed-content note:** a page served over **HTTPS** cannot call an **HTTP** backend —
+browsers block it. So the landing page is what belongs on a public URL; the console and
+verifier shine locally, or against a backend behind TLS.
+
+## Deploying the static pages
+
+Vercel: import the repo, set **Root Directory** to `web`, framework preset **Other**. No
+build command — the directory is the output.

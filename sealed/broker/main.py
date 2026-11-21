@@ -35,14 +35,16 @@ MONITOR_URL = os.environ.get("MONITOR_URL", "http://monitor:8005")
 AUDIT_URL = os.environ.get("AUDIT_URL", "http://audit:8001")
 
 app = FastAPI(title="sealed-broker", version="0.4.0")
-# CORS so the minimal dashboard (served on another port) can read these APIs.
+# CORS so the web console (served on another port) can read these APIs.
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
                    allow_headers=["*"])
 
 # A single pooled HTTP client, reused across requests (keep-alive connections to
 # model/blue/monitor). Creating a client per request adds a TCP handshake + setup
 # cost to every eval; httpx.Client is thread-safe for the sync pool.
-_http = httpx.Client(timeout=120.0)
+# Generous: with a real local model behind the wrapper, the FIRST call also
+# loads the model into memory, which can take far longer than inference.
+_http = httpx.Client(timeout=300.0)
 
 _tests: dict[str, dict] = {}
 
@@ -152,6 +154,9 @@ def attack(req: AttackReq,
         "model_response": model_output,
         "verdict": verdict,
         "flagged": flagged,
+        # Which rule the defenders actually matched on. Passed through so a
+        # verdict can be explained rather than just asserted.
+        "verdict_reason": verdict_resp.get("reason"),
     }
 
 
@@ -202,15 +207,26 @@ def eval_attestation(test_id: str) -> dict:
     tamper-evident audit chain that is still intact. The audit service signs it.
     """
     test = _tests.get(test_id)
+    # Never mint a signed attestation for an evaluation this broker did not run.
+    # The attestation asserts the environment was sound (isolated, fresh context,
+    # disclosure gated); asserting that about an unknown test would be a signed
+    # claim with nothing behind it, which is exactly what this project exists to
+    # prevent. An unknown id is a 404, not a green proof.
+    if test is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"unknown test_id '{test_id}': this broker has no record of that "
+                   f"evaluation, so it cannot attest to it",
+        )
     facts = {
         "test_id": test_id,
         "network_isolated": True,
         "model_context_fresh": True,
         "disclosure_gated": True,
         "capability_tokens": bool(policy.CAP_ENFORCE),
-        "attacks": test["attacks"] if test else None,
-        "flagged": test["flagged"] if test else None,
-        "status": test["status"] if test else "unknown",
+        "attacks": test["attacks"],
+        "flagged": test["flagged"],
+        "status": test["status"],
     }
     headers = {"X-Audit-Token": audit_client.AUDIT_WRITE_TOKEN} if audit_client.AUDIT_WRITE_TOKEN else {}
     try:
@@ -221,16 +237,118 @@ def eval_attestation(test_id: str) -> dict:
         raise HTTPException(status_code=502, detail="audit service unavailable")
 
 
+@app.get("/eval/proof/{test_id}")
+def eval_proof(test_id: str) -> dict:
+    """The full, self-contained proof bundle for the public verifier:
+
+      * the signed attestation (facts + 'chain intact'),
+      * a Merkle inclusion proof that this test's conclusion is in the
+        Evaluation Transparency Log, under the ledger's signed root.
+
+    A verifier can check all of it offline with only the public key — see
+    web/verify.html. No trust in sealed required.
+    """
+    bundle = eval_attestation(test_id)  # signed attestation (via audit /attest)
+    inclusion = None
+    anchor_event = None
+    try:
+        log = _http.get(f"{AUDIT_URL}/log",
+                        params={"test_id": test_id, "limit": 500}).json()
+        entries = log.get("entries", [])
+        concl = [e for e in entries if e.get("event") == "test_conclude"]
+        anchor = concl[-1] if concl else (entries[-1] if entries else None)
+        if anchor is not None:
+            anchor_event = anchor.get("event")
+            inclusion = _http.get(f"{AUDIT_URL}/log/proof/inclusion",
+                                  params={"seq": anchor["seq"]}).json()
+    except Exception:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail="transparency log unavailable")
+
+    # Independent witnesses co-sign the ledger checkpoint (trust-minimizing: no
+    # single key, not even the audit service's, can rewrite history unnoticed).
+    witnesses: list = []
+    witnessed = False
+    quorum = 0
+    if inclusion is not None:
+        try:
+            co = _http.post(f"{AUDIT_URL}/log/cosign",
+                            json={"checkpoint": inclusion["checkpoint"],
+                                  "signature": inclusion["signature"]}).json()
+            witnesses = co.get("witnesses", [])
+            witnessed = co.get("witnessed", False)
+            quorum = co.get("quorum", 0)
+        except Exception:  # noqa: BLE001
+            pass
+
+    return {
+        "test_id": test_id,
+        "attestation": bundle["attestation"],
+        "signature": bundle["signature"],
+        "public_key_pem": bundle["public_key_pem"],
+        "anchor_event": anchor_event,
+        "inclusion": inclusion,
+        "witnesses": witnesses,
+        "witnessed": witnessed,
+        "quorum": quorum,
+    }
+
+
+def _in_container() -> bool:
+    """Are we actually running inside a container right now?
+
+    Decides whether the container-level isolation from compose.yaml is real or
+    merely declared. Deliberately conservative: anything it cannot confirm is
+    reported as NOT active, so the status page never overstates its case.
+    """
+    try:
+        if os.path.exists("/.dockerenv") or os.path.exists("/run/.containerenv"):
+            return True
+        with open("/proc/1/cgroup", "r", encoding="utf-8") as fh:
+            blob = fh.read()
+        return any(m in blob for m in ("docker", "containerd", "kubepods", "libpod"))
+    except Exception:  # noqa: BLE001 — Windows/macOS have neither; that's a "no"
+        return False
+
+
 @app.get("/health/isolation")
 def health_isolation() -> dict:
-    """Live boundary status for the dashboard."""
+    """Live boundary status for the web console."""
+    # The model is a tenant: it is not reachable from a browser (no published
+    # port, no CORS) and must not be. The broker is the only thing allowed to
+    # ask it anything, so it relays how much state the model is holding —
+    # live evidence for the "fresh memory" claim that works in every topology.
+    model: dict = {}
+    try:
+        mh = _http.get(f"{MODEL_URL}/health", timeout=3.0).json()
+        model = {
+            "backend": mh.get("backend"),
+            "context_mode": mh.get("context_mode"),
+            "retained_items": mh.get("retained_items"),
+        }
+    except Exception:  # noqa: BLE001 — never let a status page break the broker
+        model = {"backend": None, "context_mode": None, "retained_items": None}
+
+    # Container-level protections (separate networks, seccomp, dropped caps,
+    # read-only rootfs, cgroup limits) come from compose.yaml and only exist
+    # when this is actually running in a container. Reporting them as
+    # "enforced" while running as plain local processes would be a lie told by
+    # the very service whose job is to be trustworthy — so say which mode we
+    # are in and let the UI show the difference.
+    containerized = _in_container()
+    container_level = "enforced" if containerized else "declared_not_active"
+
     return {
-        "network_segmentation": "enforced",
-        "seccomp": "enforced",
-        "capabilities": "dropped_all",
-        "rootfs": "read_only",
-        "cgroups": "enforced",
-        "model_context_fresh": "enforced",
+        "model": model,
+        "runtime": "container" if containerized else "local_processes",
+        # --- only true inside a container; declared in compose.yaml otherwise
+        "network_segmentation": container_level,
+        "seccomp": container_level,
+        "capabilities": "dropped_all" if containerized else "declared_not_active",
+        "rootfs": "read_only" if containerized else "declared_not_active",
+        "cgroups": container_level,
+        # --- application-level: genuinely active in BOTH modes, and provable
+        "model_context_fresh": ("enforced" if (model.get("context_mode") == "fresh")
+                                else "disabled"),
         "capability_tokens": "enforced" if policy.CAP_ENFORCE else "disabled",
         "disclosure_gating": "enforced",
         "timing_normalization": "on" if timing.TIMING_QUANTUM_MS > 0 else "off",

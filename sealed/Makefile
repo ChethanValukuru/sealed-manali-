@@ -8,7 +8,7 @@ NAIVE   ?= $(COMPOSE) -f compose.naive.yaml
 OLLAMA  ?= $(COMPOSE) -f compose.yaml -f compose.ollama.yaml
 
 .PHONY: help up down ps logs build demo-secure demo-naive naive-up naive-down \
-        up-ollama down-ollama test latency verify-audit demo-tamper dashboard \
+        up-ollama down-ollama test latency verify-audit demo-tamper \
         fetch-datasets
 
 help:
@@ -24,7 +24,6 @@ help:
 	@echo "  make latency       - measure + print isolation overhead per eval (M7)"
 	@echo "  make verify-audit  - verify the tamper-evident log (expect intact)"
 	@echo "  make demo-tamper   - tamper a copy of the log; verifier flags the entry"
-	@echo "  make dashboard     - serve the minimal console at http://localhost:8080"
 	@echo "  make naive-down    - tear down the naive sandbox"
 	@echo ""
 	@echo "Override engine: make up COMPOSE=\"podman compose\""
@@ -91,10 +90,6 @@ test:
 # -s so the latency numbers print; also writes tests/latency_report.txt
 latency:
 	SEALED_COMPOSE="$(COMPOSE)" python3 -m pytest tests/test_latency.py -v -s
-
-dashboard:
-	@echo ">> Minimal console at http://localhost:8080 (Ctrl-C to stop). Secure stack must be up."
-	@cd dashboard && python3 -m http.server 8080
 
 verify-audit:
 	@echo ">> Verifying the tamper-evident audit log (expect intact)..."

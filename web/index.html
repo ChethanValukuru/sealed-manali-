@@ -3,173 +3,154 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>sealed — safe, trustworthy AI security testing</title>
-<meta name="description" content="Test an AI model safely: let a team attack it and a team defend it at the same time, kept apart so neither can cheat, with a tamper-proof record of everything.">
+<title>sealed, provable AI security testing</title>
+<meta name="description" content="Run an AI safety test where cheating is structurally impossible, and hand anyone a receipt they can check themselves.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
-<script>
-  try { var t = localStorage.getItem('sealed-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
-</script>
 </head>
 <body>
+
+<div class="sprog" aria-hidden="true"><i id="sprog"></i></div>
 
 <nav class="nav">
   <div class="wrap">
     <a class="brand" href="/">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="7" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="9" y="9" width="14" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="14" y="14" width="4" height="4" rx="1.2" fill="currentColor"/></svg>
+      <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="7" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="9" y="9" width="14" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="14" y="14" width="4" height="4" rx="1.2" fill="currentColor"/></svg>
       sealed
     </a>
     <span class="spacer"></span>
-    <a class="hide-sm" href="#how">How it works</a>
-    <a class="hide-sm" href="#threat-model">Honest limits</a>
-    <a href="walkthrough.html">Walkthrough</a>
-    <a class="cta" href="console.html">Console</a>
-    <button class="toggle" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+    <a href="verify.html">Verify<span class="hide-sm"> a proof</span></a>
+    <a class="cta" href="console.html"><span class="hide-sm">Open the </span>Console</a>
   </div>
 </nav>
 
 <header class="hero">
   <div class="wrap">
-    <p class="eyebrow">Safe AI security testing</p>
-    <h1>Test an AI safely — and trust the result.</h1>
-    <p class="lead">To check if an AI is safe, one team tries to trick it (the <strong>attackers</strong>) while another team defends it (the <strong>defenders</strong>). The catch: if they all share one space, they can peek at each other and the AI can get confused between tests — so the result can't be trusted. <strong>sealed</strong> keeps everyone in separate rooms, lets them work at the same time, and keeps a record no one can secretly change.</p>
-    <div class="btn-row" style="margin-top:28px">
-      <a class="btn" href="walkthrough.html">Watch the 1-minute walkthrough</a>
-      <a class="btn ghost" href="console.html">Open the console</a>
+
+    <div class="col">
+      <p class="eyebrow"><span class="live"></span> running locally</p>
+
+      <h1>Test an AI's safety.<br>Then <span class="hl">prove</span> you didn't cheat.</h1>
+
+      <p class="lead">One team attacks the AI, another defends it. Put them in the same room
+         and they can peek, so the result proves nothing. <strong>sealed</strong> runs
+         the test with the teams sealed apart, and signs a record that anyone can re-check
+         without trusting us.</p>
+
+      <div class="doors">
+        <a class="door" href="console.html">
+          <span class="dt">The console <span class="arw">&rarr;</span></span>
+          <p class="dd">Fire 500 attack prompts at a live AI, then try to secretly
+             edit the record and get caught.</p>
+        </a>
+        <a class="door" href="verify.html">
+          <span class="dt">The verifier <span class="arw">&rarr;</span></span>
+          <p class="dd">Recompute the signatures and the Merkle proof in your own
+             browser. Nothing asks you to trust us.</p>
+        </a>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><span class="v" data-to="500">0</span><span class="k">attack prompts</span></div>
+        <div class="stat"><span class="v" data-to="4400">0</span><span class="k">tamper attempts</span></div>
+        <div class="stat"><span class="v" data-to="100" data-suffix="%">0</span><span class="k">caught</span></div>
+        <div class="stat"><span class="v" data-to="0">0</span><span class="k">false alarms</span></div>
+      </div>
     </div>
+
+    <div class="viz" aria-hidden="true">
+      <svg viewBox="0 0 400 400">
+        <circle class="halo" cx="200" cy="200" r="72"/>
+        <circle class="halo h2" cx="200" cy="200" r="72"/>
+        <g class="ring r1"><circle class="ring" cx="200" cy="200" r="150" stroke-dasharray="3 9"/></g>
+        <g class="ring r2"><circle class="ring" cx="200" cy="200" r="116" stroke-dasharray="1 14"/></g>
+
+        <!-- wires from each sealed room into the broker -->
+        <path class="wire"  d="M104 72 L104 160 Q104 200 150 200"/>
+        <path class="pulse" d="M104 72 L104 160 Q104 200 150 200"/>
+        <path class="wire"  d="M296 72 L296 160 Q296 200 250 200"/>
+        <path class="pulse d1" d="M296 72 L296 160 Q296 200 250 200"/>
+        <path class="wire"  d="M104 328 L104 240 Q104 200 150 200"/>
+        <path class="pulse d2" d="M104 328 L104 240 Q104 200 150 200"/>
+        <path class="wire"  d="M296 328 L296 240 Q296 200 250 200"/>
+        <path class="pulse d3" d="M296 328 L296 240 Q296 200 250 200"/>
+
+        <!-- the four sealed rooms -->
+        <g><rect class="node" x="34" y="44" width="140" height="52" rx="11"/>
+           <text class="nlabel" x="52" y="68">Attackers</text>
+           <text class="nsub"   x="52" y="83">SEALED ROOM</text></g>
+        <g><rect class="node" x="226" y="44" width="140" height="52" rx="11"/>
+           <text class="nlabel" x="244" y="68">The AI</text>
+           <text class="nsub"   x="244" y="83">BLANK MEMORY</text></g>
+        <g><rect class="node" x="34" y="304" width="140" height="52" rx="11"/>
+           <text class="nlabel" x="52" y="328">Defenders</text>
+           <text class="nsub"   x="52" y="343">SEALED ROOM</text></g>
+        <g><rect class="node" x="226" y="304" width="140" height="52" rx="11"/>
+           <text class="nlabel" x="244" y="328">Witnesses</text>
+           <text class="nsub"   x="244" y="343">CO-SIGN IT</text></g>
+
+        <!-- the broker -->
+        <g><rect class="node core" x="150" y="168" width="100" height="64" rx="14"/>
+           <text class="nlabel" x="174" y="196" style="fill:#fff">Broker</text>
+           <text class="nsub"   x="174" y="212" style="fill:var(--red-ink)">RECORDS ALL</text></g>
+      </svg>
+    </div>
+
   </div>
 </header>
 
-<section id="plain">
-  <div class="wrap">
-    <h2>The simple idea</h2>
-    <p class="lead" style="margin-bottom:24px">Think of testing a bank vault. You hire people to try to break in, and people to defend it. If the two groups can watch each other — or if someone can edit the security camera footage — the test proves nothing.</p>
-    <div class="grid three">
-      <div class="card"><h3>Separate rooms</h3><p class="muted">The attackers, the defenders, and the AI each work in their own locked space. None can see or reach the others.</p></div>
-      <div class="card"><h3>A trusted go-between</h3><p class="muted">All messages pass through one honest middleman. It decides who is allowed to see what, and when.</p></div>
-      <div class="card"><h3>Tamper-proof record</h3><p class="muted">Every action is written down in a way that makes any later edit obvious — so the findings hold up.</p></div>
-    </div>
-  </div>
-</section>
-
-<section id="problem">
-  <div class="wrap">
-    <h2>What goes wrong without it</h2>
-    <div class="grid three">
-      <div class="card"><h3>The defenders peek</h3><p class="muted">If the defenders can see the attack before the test is over, they can quietly prepare for it — and the "pass" is fake.</p></div>
-      <div class="card"><h3>The AI gets confused</h3><p class="muted">If the AI remembers the last test, a trick from one test can carry over and spoil the next one.</p></div>
-      <div class="card"><h3>Hidden leaks</h3><p class="muted">Sharing the same machine opens subtle side-channels (timing, shared memory) that ordinary setups ignore.</p></div>
-    </div>
-  </div>
-</section>
-
-<section id="how">
-  <div class="wrap">
-    <h2>How it works</h2>
-    <p class="lead" style="margin-bottom:28px">Everything flows through one trusted go-between — the <strong>broker</strong>. There's no direct line between the teams, and every step is recorded.</p>
-
-    <svg class="diagram" viewBox="0 0 760 300" role="img" aria-label="The attacker, the AI model, and the defender each connect only to the broker in the middle. The broker writes every event to a tamper-proof record, and a one-way watcher logs any rule-breaking.">
-      <path class="edge" d="M150 70 H330" />
-      <path class="edge" d="M150 230 H330" />
-      <path class="edge" d="M150 150 H330" />
-      <path class="edge" d="M430 150 H560" />
-      <path class="edge" d="M495 185 V240 H560" />
-      <g><rect class="box" x="20" y="48" width="130" height="44" rx="8"/><text class="lbl" x="36" y="68">Attackers</text><text class="sub" x="36" y="83">try to trick the AI</text></g>
-      <g><rect class="box" x="20" y="128" width="130" height="44" rx="8"/><text class="lbl" x="36" y="148">The AI</text><text class="sub" x="36" y="163">clean memory each test</text></g>
-      <g><rect class="box" x="20" y="208" width="130" height="44" rx="8"/><text class="lbl" x="36" y="228">Defenders</text><text class="sub" x="36" y="243">check the answer</text></g>
-      <g><rect class="boxb" x="330" y="110" width="100" height="80" rx="10"/><text class="lbl" x="347" y="144">Broker</text><text class="sub" x="346" y="162">the trusted</text><text class="sub" x="346" y="175">go-between</text></g>
-      <g><rect class="box" x="560" y="128" width="175" height="46" rx="8"/><text class="lbl" x="576" y="148">Tamper-proof record</text><text class="sub" x="576" y="164">any edit is detectable</text></g>
-      <g><rect class="box" x="560" y="222" width="175" height="42" rx="8"/><text class="lbl" x="576" y="241">Security watcher</text><text class="sub" x="576" y="256">logs rule-breaking</text></g>
-    </svg>
-
-    <div class="grid two" style="margin-top:28px">
-      <div class="card"><h3>Walls that hold</h3><p class="muted">Each team is boxed in so it can't reach, see, or read any other team. <span class="muted">(Done with separate networks, locked-down containers, and strict permissions.)</span></p></div>
-      <div class="card"><h3>Results you can check yourself</h3><p class="muted">The record is signed and chained together. Change one line and a quick check points to the exact spot — proof the findings are real. <span class="muted">(A hash chain with digital signatures.)</span></p></div>
-      <div class="card"><h3>A fresh AI every test</h3><p class="muted">The AI starts each test with a blank memory, so nothing carries over from the last one.</p></div>
-      <div class="card"><h3>Honest about limits</h3><p class="muted">A side-by-side demo shows the leak happening, then shows it blocked — and the limits page says plainly what it doesn't cover.</p></div>
-    </div>
-  </div>
-</section>
-
-<section id="objectives">
-  <div class="wrap">
-    <h2>What it sets out to do</h2>
-    <ul class="obj">
-      <li><span class="n">01</span><span><span class="t">Stay fast while staying safe</span><br><span class="d">The extra security doesn't slow the test down to a crawl — the overhead is measured, not guessed.</span></span></li>
-      <li><span class="n">02</span><span><span class="t">Stop information leaking</span><br><span class="d">Teams can't reach, watch, or read each other; the attack stays hidden from the defenders until the test ends.</span></span></li>
-      <li><span class="n">03</span><span><span class="t">Keep an honest record</span><br><span class="d">A tamper-proof log where any change is caught — and pointed to exactly.</span></span></li>
-      <li><span class="n">04</span><span><span class="t">Run anywhere normal</span><br><span class="d">Works on an ordinary cloud server with standard tools — no special hardware.</span></span></li>
-      <li><span class="n">05</span><span><span class="t">Handle AI-specific risks</span><br><span class="d">A fresh AI memory per test, so one test can't poison the next.</span></span></li>
-      <li><span class="n">06</span><span><span class="t">Be honest about the gaps</span><br><span class="d">The limits are written down as clearly as the protections.</span></span></li>
-    </ul>
-  </div>
-</section>
-
-<section id="threat-model">
-  <div class="wrap">
-    <h2>What it protects — and what it doesn't</h2>
-    <p class="lead" style="margin-bottom:26px">A security tool you can't trust about its own limits isn't worth much. So here's the honest version, in plain terms.</p>
-    <div class="tm">
-      <div class="col">
-        <h3><span class="dot ok"></span> It stops these</h3>
-        <ul>
-          <li>Teams spying on each other's files, programs, or network</li>
-          <li>Defenders seeing the attack too early</li>
-          <li>One test's trick leaking into the next</li>
-          <li>Anyone secretly editing the record</li>
-          <li>A team calling something it isn't allowed to</li>
-        </ul>
-      </div>
-      <div class="col">
-        <h3><span class="dot warn"></span> It reduces these</h3>
-        <ul>
-          <li>Timing clues — smoothed out, but not perfectly erased</li>
-          <li>Shared-resource clues — limited per team, not fully removed</li>
-        </ul>
-      </div>
-      <div class="col">
-        <h3><span class="dot bad"></span> It doesn't claim these</h3>
-        <ul>
-          <li>Deep chip-level leaks on shared processors</li>
-          <li>A hacked server or operating system</li>
-          <li>A dishonest go-between (the broker is trusted here)</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="glossary">
-  <div class="wrap">
-    <h2>A few words, explained</h2>
-    <div class="grid two">
-      <div class="card"><h3>Red team / attackers</h3><p class="muted">People (or scripts) whose job is to try to break or trick the system.</p></div>
-      <div class="card"><h3>Blue team / defenders</h3><p class="muted">People (or tools) whose job is to catch and block those attacks.</p></div>
-      <div class="card"><h3>Audit log</h3><p class="muted">A running list of everything that happened — here, built so it can't be quietly changed.</p></div>
-      <div class="card"><h3>Side-channel</h3><p class="muted">An indirect leak — learning a secret from timing or shared resources instead of the data itself.</p></div>
-    </div>
-  </div>
-</section>
-
 <footer>
   <div class="wrap">
-    <span>sealed — safe, trustworthy AI security testing.</span>
-    <span><a href="https://github.com/ChethanValukuru/sealed-manali-" target="_blank" rel="noopener">GitHub</a> · <a href="console.html">Console</a></span>
+    <span class="mono">SEALED, PROVABLE AI SECURITY TESTING</span>
+    <span><a href="https://github.com/ChethanValukuru/sealed-manali-" target="_blank" rel="noopener">GitHub</a></span>
   </div>
 </footer>
 
 <script>
-  var btn = document.getElementById('themeBtn');
-  btn && btn.addEventListener('click', function () {
-    var cur = document.documentElement.getAttribute('data-theme');
-    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    var next = cur ? (cur === 'dark' ? 'light' : 'dark') : (prefersDark ? 'light' : 'dark');
-    document.documentElement.setAttribute('data-theme', next);
-    try { localStorage.setItem('sealed-theme', next); } catch (e) {}
-  });
+  // Count the hero stats up once, on load. Skipped entirely when the
+  // visitor has asked for less motion -- the final number is what matters.
+  (function () {
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.querySelectorAll(".stat .v").forEach(function (el, i) {
+      var to = Number(el.getAttribute("data-to"));
+      var suffix = el.getAttribute("data-suffix") || "";
+      if (reduce || to === 0) { el.textContent = to.toLocaleString() + suffix; return; }
+      var start = null, dur = 1100 + i * 120;
+      function step(t) {
+        if (start === null) start = t;
+        var p = Math.min(1, (t - start) / dur);
+        var eased = 1 - Math.pow(1 - p, 3);          // ease-out cubic
+        el.textContent = Math.round(to * eased).toLocaleString() + suffix;
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    });
+  })();
+</script>
+<script>
+  /* Scroll progress. One passive listener, one CSS variable, no layout work:
+     the bar is a transform, so the compositor does it. */
+  (function () {
+    var bar = document.getElementById("sprog");
+    if (!bar) return;
+    var queued = false;
+    function paint() {
+      queued = false;
+      var doc = document.documentElement;
+      var max = doc.scrollHeight - window.innerHeight;
+      bar.style.setProperty("--p", max > 0 ? (window.scrollY / max).toFixed(4) : 0);
+    }
+    addEventListener("scroll", function () {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(paint);
+    }, { passive: true });
+    addEventListener("resize", paint);
+    paint();
+  })();
 </script>
 </body>
 </html>
