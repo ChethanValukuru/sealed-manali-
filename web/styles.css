@@ -888,6 +888,27 @@ footer .mono { font-family: var(--mono); font-size: .76rem; letter-spacing: .04e
 }
 .cscore-grid .sub { display: block; font-size: .72rem; color: var(--muted); }
 
+/* the AI's score, one rank below SEALED's own.
+   Visibly secondary on purpose: the certificate warrants the test, it does
+   not vouch for the model. Same information, clearly subordinate. */
+.cai {
+  margin-top: 16px; padding: 13px 15px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-2);
+}
+.cai-k {
+  font-family: var(--mono); font-size: .58rem; font-weight: 500;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--muted);
+}
+.cai-row { display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap; margin: 3px 0 2px; }
+.cai-v {
+  font-family: var(--sans); font-size: 1.55rem; font-weight: 700;
+  letter-spacing: -.03em; color: #fff; font-variant-numeric: tabular-nums;
+}
+.cai-w { font-size: .82rem; color: var(--text-dim); }
+.cai-sub { font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cai .cnote { margin-top: 8px; font-size: .78rem; }
+
 /* how it was tested */
 .chow { margin: 0; padding-left: 1.15em; }
 .chow li { font-size: .87rem; line-height: 1.6; color: var(--text-dim); margin: 0 0 8px; }

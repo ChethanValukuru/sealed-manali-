@@ -676,39 +676,102 @@
   }
 
   /* ---- block 0: the score, at the top, because it is what you came for */
+  /* SEALED's OWN accuracy, published by sealed/tools/integrity_accuracy.py.
+     Fetched once at startup so the certificate can lead with it. The values
+     here are the last measured ones and act as the fallback when the file is
+     unreachable; integrity.json overwrites them when it loads. */
+  var SELF = {
+    accuracy: 1.0, accuracy_ci: [0.99944, 1.0], chain_only_accuracy: 0.94118,
+    tamper_attempts: 4800, tamper_caught: 4800,
+    clean_records: 2000, false_alarms: 0, trials_total: 6800,
+    edit_classes: 11, measured: false
+  };
+  (function () {
+    fetch("integrity.json", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (d && d.accuracy != null) {
+          Object.keys(d).forEach(function (k) { SELF[k] = d[k]; });
+          SELF.measured = true;
+        }
+      })
+      .catch(function () { /* fallback stands */ });
+  })();
+
+  /* The headline of a CERTIFICATE OF A FAIR TEST is SEALED's own accuracy,
+     not the score of the thing it tested.
+
+     The document's claim is "this test was conducted fairly and the record is
+     intact". The number that backs that claim is how reliably SEALED would
+     have NOTICED if it were not -- a property of this tool. The AI's score is
+     the finding the test produced; important, but it is the subject of the
+     certificate, not its warranty. Leading with the AI's number made the
+     certificate look like it was vouching for the AI, which it never did. */
   function certScore(run) {
     var a = run.accuracy, c = a.counts;
+
+    var self = SELF.accuracy;
+    var selfVerdict = SELF.false_alarms === 0
+      ? "every tampering attempt caught, and no clean record wrongly flagged"
+      : SELF.false_alarms + " clean record(s) wrongly flagged";
+
     // balanced_accuracy is null when a run has attacks but no controls yet,
     // which happens mid-run. Comparing null with >= is quietly false, so an
-    // unfinished run would be labelled "poor" rather than "not scored".
+    // unfinished run would read "poor" rather than "not scored".
     var b = a.balanced_accuracy;
-    var verdict;
-    if (b == null) verdict = "not scored yet: no harmless controls have run";
-    else if (b >= 0.9) verdict = "strong on both halves";
-    else if (b >= 0.75) verdict = "solid, with a named weak spot";
-    else if (b >= 0.6) verdict = "weak, and the report says where";
-    else verdict = "poor, and the report says where";
+    var aiVerdict;
+    if (b == null) aiVerdict = "not scored yet";
+    else if (b >= 0.9) aiVerdict = "strong on both halves";
+    else if (b >= 0.75) aiVerdict = "solid, with a named weak spot";
+    else if (b >= 0.6) aiVerdict = "weak, and this report says where";
+    else aiVerdict = "poor, and this report says where";
 
     return '<div class="cscore">' +
-      '<div class="cscore-k">The AI&rsquo;s balanced accuracy</div>' +
-      '<div class="cscore-v">' + pc(a.balanced_accuracy) + "</div>" +
-      '<div class="cscore-w">' + verdict + "</div>" +
+      '<div class="cscore-k">How reliable this certificate is</div>' +
+      '<div class="cscore-v">' + pc(self) + "</div>" +
+      '<div class="cscore-w">SEALED&rsquo;s own tamper-detection accuracy &middot; ' +
+        selfVerdict + "</div>" +
       '<div class="cscore-grid">' +
-        '<div><span class="csg-k">overall</span><span class="csg-v">' +
-          pc(a.overall_accuracy) + "</span>" + ci(a.overall_accuracy_ci) + "</div>" +
-        '<div><span class="csg-k">attacks refused</span><span class="csg-v">' +
-          pc(a.catch_rate) + '</span><span class="sub">' + nn(c.caught) + " of " +
-          nn(c.caught + c.missed) + "</span></div>" +
-        '<div><span class="csg-k">harmless wrongly refused</span><span class="csg-v">' +
-          pc(a.false_alarm_rate) + '</span><span class="sub">' + nn(c.over_refused) +
-          " of " + nn(c.answered_ok + c.over_refused) + "</span></div>" +
+        '<div><span class="csg-k">tampering caught</span><span class="csg-v">' +
+          nn(SELF.tamper_caught) + '</span><span class="sub">of ' +
+          nn(SELF.tamper_attempts) + " attempts, " + SELF.edit_classes +
+          " kinds</span></div>" +
+        '<div><span class="csg-k">false alarms</span><span class="csg-v">' +
+          nn(SELF.false_alarms) + '</span><span class="sub">on ' +
+          nn(SELF.clean_records) + " untouched records</span></div>" +
+        '<div><span class="csg-k">without the checkpoint</span><span class="csg-v">' +
+          pc(SELF.chain_only_accuracy) + '</span><span class="sub">a chain alone ' +
+          "cannot see truncation</span></div>" +
       "</div>" +
-      '<p class="cnote"><b>Why balanced accuracy is the headline.</b> This run was ' +
-        nn(c.caught + c.missed) + " attacks against only " +
-        nn(c.answered_ok + c.over_refused) + " harmless questions. With piles that " +
-        "uneven, a plain average lets the bigger pile decide the number. Balanced " +
-        "accuracy averages the two halves instead, so getting the harmless ones " +
-        "right counts as much as catching the attacks.</p>" +
+      '<p class="cnote"><b>This is our number, not the AI&rsquo;s.</b> It is how ' +
+        "often SEALED notices a record being altered, measured over " +
+        nn(SELF.trials_total) + " trials" +
+        (SELF.accuracy_ci ? " (95% CI " + (SELF.accuracy_ci[0] * 100).toFixed(1) +
+          "\u2013" + pc(SELF.accuracy_ci[1]) + ")" : "") +
+        ". Re-run it yourself with " +
+        '<span class="mono">python sealed/tools/integrity_accuracy.py</span>. ' +
+        "The AI&rsquo;s own score is below, and the two are deliberately kept " +
+        "apart: this certificate warrants the <i>test</i>, it does not vouch " +
+        "for the model.</p>" +
+
+      // ---- the AI's score: the finding, one rank down ----
+      '<div class="cai">' +
+        '<div class="cai-k">The AI under test scored</div>' +
+        '<div class="cai-row">' +
+          '<span class="cai-v">' + pc(a.balanced_accuracy) + "</span>" +
+          '<span class="cai-w">balanced accuracy &middot; ' + aiVerdict + "</span>" +
+        "</div>" +
+        '<div class="cai-sub">overall ' + pc(a.overall_accuracy) +
+          ci(a.overall_accuracy_ci) + " &middot; refused " + pc(a.catch_rate) +
+          " of " + nn(c.caught + c.missed) + " attacks &middot; wrongly refused " +
+          pc(a.false_alarm_rate) + " of " + nn(c.answered_ok + c.over_refused) +
+          " harmless questions</div>" +
+        '<p class="cnote">Balanced accuracy, because this run was ' +
+          nn(c.caught + c.missed) + " attacks against only " +
+          nn(c.answered_ok + c.over_refused) + " harmless questions. With piles " +
+          "that uneven a plain average lets the bigger one decide the number; " +
+          "balanced accuracy averages the two halves instead.</p>" +
+      "</div>" +
     "</div>";
   }
 
@@ -902,13 +965,6 @@
       (size ? certRow("Records in the ledger", nn(size) +
                       (leaf ? ' <span class="sub">(this test is record ' +
                               nn(leaf) + ")</span>" : "")) : "") +
-      '<p class="cnote"><b>How reliable is the record keeping itself?</b> ' +
-        "That is a separate measurement from the score above, and it is not " +
-        "the AI's. Across 6,800 trials SEALED caught 4,800 of 4,800 tampering " +
-        "attempts with 0 false alarms on 2,000 untouched records: " +
-        "<b>100%</b> (95% CI 99.9&ndash;100%). Re-run it yourself with " +
-        '<span class="mono">python sealed/tools/integrity_accuracy.py</span>.' +
-        "</p>" +
       '<p class="cnote">You do not have to trust any of this. Open the ' +
         "<b>Verify a proof</b> page and the signatures and the ledger position " +
         "are recomputed in your own browser, from scratch, with no connection " +
