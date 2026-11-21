@@ -22,3 +22,5 @@ venv/
 
 # Generated outputs (rebuild with: python sealed/tools/suite_report.py)
 # (docs/SEALED-accuracy-report.pdf is committed on purpose - it is demo evidence)
+
+.vercel
