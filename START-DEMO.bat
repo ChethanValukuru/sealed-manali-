@@ -63,7 +63,7 @@ if errorlevel 1 (
 
 echo.
 echo   Ready. Opening the demo in your browser...
-start "" "http://localhost:8080/console.html"
+start "" "http://127.0.0.1:8080/console.html"
 
 echo.
 echo   ==============================================

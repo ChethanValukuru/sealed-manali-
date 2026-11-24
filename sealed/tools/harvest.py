@@ -56,7 +56,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DATASETS = HERE.parent / "datasets"
-AUDIT_URL = "http://localhost:8001"
+AUDIT_URL = "http://127.0.0.1:8001"
 
 
 # --------------------------------------------------------------- loading

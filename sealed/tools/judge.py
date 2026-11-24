@@ -29,9 +29,9 @@ import time
 import urllib.error
 import urllib.request
 
-BROKER = os.environ.get("SEALED_BROKER", "http://localhost:8000")
-AUDIT = os.environ.get("SEALED_AUDIT", "http://localhost:8001")
-RED = os.environ.get("SEALED_RED", "http://localhost:8004")
+BROKER = os.environ.get("SEALED_BROKER", "http://127.0.0.1:8000")
+AUDIT = os.environ.get("SEALED_AUDIT", "http://127.0.0.1:8001")
+RED = os.environ.get("SEALED_RED", "http://127.0.0.1:8004")
 TOKEN = os.environ.get("AUDIT_WRITE_TOKEN", "audit-write-dev")
 
 W = 72
@@ -368,7 +368,7 @@ def cmd_certificate(args) -> int:
     print()
     if args.test_id:
         print(f"   Verify it yourself:")
-        print(f"     http://localhost:8080/verify.html"
+        print(f"     http://127.0.0.1:8080/verify.html"
               f"#backend={BROKER}&test={args.test_id}")
         print()
         wrap("That page recomputes the signatures and the ledger position in "

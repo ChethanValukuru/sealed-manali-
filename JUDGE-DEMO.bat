@@ -202,7 +202,7 @@ echo    ------------------------------------------------------------------
 echo.
 choice /c YN /n /m "   Open the console in your browser to look further? [Y/N] "
 if errorlevel 2 goto DONE
-start "" "http://localhost:8080/console.html"
+start "" "http://127.0.0.1:8080/console.html"
 
 :DONE
 echo.

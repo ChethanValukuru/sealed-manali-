@@ -283,7 +283,7 @@ a.b { text-decoration: none; }
   position: relative;
   min-height: calc(100vh - 138px);
   display: flex; align-items: center;
-  padding: 22px 0 24px;
+  padding: 16px 0 18px;
 }
 .hero .wrap {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .88fr);
@@ -404,7 +404,7 @@ a.b { text-decoration: none; }
 .ps-k { font-size: .79rem; line-height: 1.4; color: var(--text-dim); }
 .proof-note {
   font-size: .78rem; line-height: 1.45; color: var(--muted);
-  margin: 7px 0 0; max-width: 62ch;
+  margin: 5px 0 0; max-width: 64ch;
 }
 @media (max-width: 860px) {
   .proof { grid-template-columns: 1fr; }

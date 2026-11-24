@@ -61,22 +61,23 @@
       <div class="proof">
         <div class="proof-main">
           <span class="proof-k">SEALED's own accuracy</span>
-          <span class="proof-v" id="accV" data-to="100" data-suffix="%">0</span>
-          <span class="proof-ci" id="accCI">95% CI 99.9&ndash;100% &middot; 6,800 trials</span>
+          <span class="proof-v" id="accV" data-to="94" data-suffix=".1%">0</span>
+          <span class="proof-ci" id="accCI">hash chain alone &middot; 6,800 trials</span>
           <span class="proof-live" id="accLive"></span>
         </div>
         <div class="proof-side">
+          <div><span class="ps-v" id="accFull">100%</span>
+               <span class="ps-k">with the signed checkpoint and witnesses added</span></div>
           <div><span class="ps-v" id="accCaught">4,800</span>
                <span class="ps-k">tampering attempts, every one caught</span></div>
           <div><span class="ps-v" id="accFalse">0</span>
                <span class="ps-k">false alarms in <span id="accClean">2,000</span> untouched records</span></div>
-          <div><span class="ps-v" id="accChain">94.1%</span>
-               <span class="ps-k">without the signed checkpoint, which is why it exists</span></div>
         </div>
       </div>
-      <p class="proof-note">That is how reliably <strong>sealed</strong> notices
-         someone editing a record. It is not the score of the AI being tested,
-         which the console reports separately.</p>
+      <p class="proof-note">How reliably <strong>sealed</strong> notices a record
+         being edited, on the hash chain alone. A chain cannot see truncation,
+         which the signed checkpoint and witnesses fix. Neither number is the
+         AI&rsquo;s score.</p>
     </div>
 
     <div class="viz" aria-hidden="true">
@@ -139,26 +140,37 @@
       .then(function (d) {
         if (!d || d.accuracy == null) return;
         var pct = function (x, dp) { return (x * 100).toFixed(dp == null ? 1 : dp) + "%"; };
+        // The HEADLINE is the chain-only figure: the conservative one, true
+        // without the checkpoint layer. The full number sits beside it. A
+        // round 100% invites "what did you miss", and the honest answer --
+        // truncation, which is why the checkpoint exists -- is more
+        // convincing stated up front than extracted under questioning.
         var v = document.getElementById("accV");
-        if (v) {
+        if (v && d.chain_only_accuracy != null) {
           // Only re-animate when the measured value actually differs from the
           // fallback already on screen. Re-running it unconditionally meant
           // that on a deployed site -- where this fetch is a network round
           // trip -- the headline counted up to 100%, then snapped back to 0
           // and counted up again when the JSON landed. Caught on the live
           // deployment, where a screenshot taken five seconds in read "5%".
-          var next = String(Math.round(d.accuracy * 100));
+          // split so the counter animates the whole part and the decimal
+          // stays put: counting "94.1" digit by digit reads as noise
+          var whole = Math.floor(d.chain_only_accuracy * 100);
+          var frac = (d.chain_only_accuracy * 100 - whole).toFixed(1).slice(1);
+          var next = String(whole);
+          v.setAttribute("data-suffix", (frac === ".0" ? "" : frac) + "%");
           if (v.getAttribute("data-to") !== next) {
             v.setAttribute("data-to", next);
             delete v.dataset.counted;
             countUp(v, 0);
           }
         }
+        var full = document.getElementById("accFull");
+        if (full && d.accuracy != null) full.textContent = pct(d.accuracy, 0);
+
         var ci = document.getElementById("accCI");
         if (ci && d.accuracy_ci) {
-          // one % sign at the end, not two: "99.9-100%", not "99.9%-100.0%"
-          ci.textContent = "95% CI " + (d.accuracy_ci[0] * 100).toFixed(1) +
-            "\u2013" + pct(d.accuracy_ci[1]) + " \u00b7 " +
+          ci.textContent = "hash chain alone \u00b7 " +
             Number(d.trials_total).toLocaleString() + " trials";
         }
         var set = function (id, text) {
@@ -168,7 +180,6 @@
         set("accCaught", Number(d.tamper_caught).toLocaleString());
         set("accFalse", Number(d.false_alarms).toLocaleString());
         set("accClean", Number(d.clean_records).toLocaleString());
-        if (d.chain_only_accuracy != null) set("accChain", pct(d.chain_only_accuracy));
 
         /* The synthetic chains give the rate; this line says the same
            mutations were replayed against the REAL running ledger and caught

@@ -200,7 +200,7 @@ def main() -> int:
     ok = True
     for name, port in checks:
         good = wait_health(port)
-        print(f"   [{'UP  ' if good else 'FAIL'}] {name:<14} http://localhost:{port}")
+        print(f"   [{'UP  ' if good else 'FAIL'}] {name:<14} http://127.0.0.1:{port}")
         ok = ok and good
 
     if not ok:
@@ -217,7 +217,7 @@ def main() -> int:
         print("  NOTE: with a real model the console is FAR better: you get genuine")
         print("        jailbreaks and real, varied answers instead of canned ones.")
         print()
-    print("  START HERE  ->  http://localhost:8080/console.html   <-- run the demo")
+    print("  START HERE  ->  http://127.0.0.1:8080/console.html   <-- run the demo")
     print()
     print("  Also:  /               the landing page")
     print("         /verify.html    the proof checker")
